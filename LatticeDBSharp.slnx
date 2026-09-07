@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LatticeDBSharp/LatticeDBSharp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LatticeDBSharp.Tests/LatticeDBSharp.Tests.csproj" />
+    <Project Path="tests/LatticeDBSharp.IntegrationTests/LatticeDBSharp.IntegrationTests.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/LatticeDBSharp.QuickStart/LatticeDBSharp.QuickStart.csproj" />
+  </Folder>
+</Solution>

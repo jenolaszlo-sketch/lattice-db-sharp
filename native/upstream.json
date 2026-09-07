@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/jeffhajewski/latticedb",
+  "reference": "v0.10.0",
+  "commit": "bcf4c553411cb6758b4b1481f1ec0be5e4872af9",
+  "zigVersion": "0.16.0",
+  "status": "pinned-not-vendored"
+}

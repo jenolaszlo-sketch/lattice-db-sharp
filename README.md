@@ -5,6 +5,18 @@ LatticeDBSharp is an independent, safe, idiomatic .NET binding for
 property-graph database with Cypher, vector search, full-text search, ACID
 transactions, and durable streams.
 
+LatticeDBSharp is an **unofficial community wrapper**. It is not affiliated
+with, sponsored by, endorsed by, or maintained by the LatticeDB project or its
+authors.
+
+LatticeDB was created by
+[Jeff Hajewski](https://github.com/jeffhajewski) and is developed by the
+[LatticeDB contributors](https://github.com/jeffhajewski/latticedb/graphs/contributors).
+They receive full credit for the database engine, C API, file format,
+documentation, and upstream language bindings. LatticeDBSharp claims no
+ownership of LatticeDB, its source code, native binaries, documentation,
+project name, or trademarks.
+
 The goal is to make the native C API feel natural in .NET without exposing
 P/Invoke, pointers, opaque native handles, or manual memory ownership:
 
@@ -71,6 +83,8 @@ recovery, locking, and cleanup tests pass on that runtime identifier.
 
 ## License and attribution
 
-LatticeDBSharp source is licensed under the Apache License 2.0. LatticeDB and all
-upstream artifacts retain their own license and copyright terms. See
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Only the independently written LatticeDBSharp wrapper source is licensed under
+the Apache License 2.0. LatticeDB is copyright © 2025 Jeff Hajewski and is
+licensed separately under the MIT License. LatticeDB and all upstream artifacts
+retain their original ownership, license, copyright, and attribution terms.
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

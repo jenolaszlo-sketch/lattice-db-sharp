@@ -1,0 +1,13 @@
+# Integrity manifests and pinned source inputs are hashed as exact bytes.
+# Keep all repository text stable across Windows, Linux, and macOS checkouts.
+* text=auto eol=lf
+
+# Native and package artifacts must never undergo text conversion.
+*.dll binary
+*.exe binary
+*.pdb binary
+*.so binary
+*.nupkg binary
+*.snupkg binary
+*.zip binary
+*.xz binary

@@ -1,4 +1,4 @@
-# LatticeDBSharp design and implementation review
+# LatticeDbSharp design and implementation review
 
 Reviewed 2026-09-07 against local commit `60258c0` and the exact upstream
 [v0.10.0 header](https://github.com/jeffhajewski/latticedb/blob/bcf4c553411cb6758b4b1481f1ec0be5e4872af9/include/lattice.h).
@@ -105,7 +105,7 @@ versioned shared libraries and misplaced binaries.
 ### R03. Managed CI does not establish native platform support
 
 Evidence: [ci.yml](../.github/workflows/ci.yml),
-[NativeFeasibilityTests.cs](../tests/LatticeDBSharp.IntegrationTests/NativeFeasibilityTests.cs).
+[NativeFeasibilityTests.cs](../tests/LatticeDbSharp.IntegrationTests/NativeFeasibilityTests.cs).
 
 CI runs one assembly-name assertion on three operating systems and never runs
 native integration tests. The skipped test body would pass without exercising
@@ -121,7 +121,7 @@ runner architecture and distinguish a managed OS matrix from the native RID matr
 ### R04. Native provenance is recorded but not enforced
 
 Evidence: [upstream.json](../native/upstream.json),
-[LatticeDBSharp.csproj](../src/LatticeDBSharp/LatticeDBSharp.csproj), CI.
+[LatticeDbSharp.csproj](../src/LatticeDbSharp/LatticeDbSharp.csproj), CI.
 
 The JSON pin is not consumed by builds, tests, or package metadata. Zig 0.16.0 is
 recorded, but its suitability for this exact source revision has not been proven.

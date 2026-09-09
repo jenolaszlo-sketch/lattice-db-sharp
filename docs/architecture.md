@@ -2,7 +2,7 @@
 
 ## Boundary
 
-LatticeDBSharp translates the pinned LatticeDB C ABI into deterministic resource
+LatticeDbSharp translates the pinned LatticeDB C ABI into deterministic resource
 ownership and idiomatic .NET values. Interop and every native handle remain
 internal. Public APIs never expose pointers.
 

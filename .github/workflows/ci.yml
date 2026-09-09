@@ -31,10 +31,10 @@ jobs:
       - name: Verify pinned upstream contract
         shell: pwsh
         run: ./eng/Verify-UpstreamManifest.ps1 -VerifyRemote
-      - run: dotnet restore LatticeDBSharp.slnx
-      - run: dotnet build LatticeDBSharp.slnx --no-restore --configuration Release
-      - run: dotnet test tests/LatticeDBSharp.Tests/LatticeDBSharp.Tests.csproj --no-build --configuration Release
-      - run: dotnet format LatticeDBSharp.slnx --verify-no-changes --no-restore
+      - run: dotnet restore LatticeDbSharp.slnx
+      - run: dotnet build LatticeDbSharp.slnx --no-restore --configuration Release
+      - run: dotnet test tests/LatticeDbSharp.Tests/LatticeDbSharp.Tests.csproj --no-build --configuration Release
+      - run: dotnet format LatticeDbSharp.slnx --verify-no-changes --no-restore
 
   native-linux-x64:
     runs-on: ubuntu-24.04
@@ -69,7 +69,7 @@ jobs:
           LATTICEDBSHARP_NATIVE_LIBRARY: ${{ steps.native.outputs.library }}
           LATTICEDBSHARP_ABI_MANIFEST: ${{ github.workspace }}/native/staging/linux-x64/abi.json
         run: >-
-          dotnet test tests/LatticeDBSharp.IntegrationTests/LatticeDBSharp.IntegrationTests.csproj
+          dotnet test tests/LatticeDbSharp.IntegrationTests/LatticeDbSharp.IntegrationTests.csproj
           --configuration Release
           -p:EnableNativeTests=true
       - uses: actions/upload-artifact@v6
@@ -111,7 +111,7 @@ jobs:
           LATTICEDBSHARP_NATIVE_LIBRARY: ${{ steps.native.outputs.library }}
           LATTICEDBSHARP_ABI_MANIFEST: ${{ github.workspace }}/native/staging/win-x64/abi.json
         run: >-
-          dotnet test tests/LatticeDBSharp.IntegrationTests/LatticeDBSharp.IntegrationTests.csproj
+          dotnet test tests/LatticeDbSharp.IntegrationTests/LatticeDbSharp.IntegrationTests.csproj
           --configuration Release
           -p:EnableNativeTests=true
       - uses: actions/upload-artifact@v6
@@ -142,12 +142,12 @@ jobs:
       - name: Verify pinned upstream contract
         shell: pwsh
         run: ./eng/Verify-UpstreamManifest.ps1 -VerifyRemote
-      - run: dotnet restore src/LatticeDBSharp/LatticeDBSharp.csproj
-      - run: dotnet pack src/LatticeDBSharp/LatticeDBSharp.csproj --no-restore --configuration Release --output artifacts/packages
+      - run: dotnet restore src/LatticeDbSharp/LatticeDbSharp.csproj
+      - run: dotnet pack src/LatticeDbSharp/LatticeDbSharp.csproj --no-restore --configuration Release --output artifacts/packages
       - name: Verify package contents and licensing boundary
         shell: pwsh
         run: |
-          $packages = @(Get-ChildItem artifacts/packages/LatticeDBSharp.*.nupkg)
+          $packages = @(Get-ChildItem artifacts/packages/LatticeDbSharp.*.nupkg)
           if ($packages.Count -ne 1) { throw "Expected one package; found $($packages.Count)." }
           ./eng/Test-NuGetPackageVerifier.ps1 -PackagePath $packages[0].FullName
           ./eng/Test-NuGetConsumer.ps1 -PackagePath $packages[0].FullName
@@ -177,5 +177,5 @@ jobs:
       - name: Smoke-test package on ${{ matrix.os }}
         shell: pwsh
         run: |
-          $package = (Get-ChildItem artifacts/packages/LatticeDBSharp.*.nupkg).FullName
+          $package = (Get-ChildItem artifacts/packages/LatticeDbSharp.*.nupkg).FullName
           ./eng/Test-NuGetConsumer.ps1 -PackagePath $package

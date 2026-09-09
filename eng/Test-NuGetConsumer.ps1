@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $resolvedPackage = (Resolve-Path -LiteralPath $PackagePath).Path
 $repositoryRootPath = [IO.Path]::GetFullPath($RepositoryRoot)
-$project = Join-Path $repositoryRootPath 'eng/LatticeDBSharp.PackageSmoke/LatticeDBSharp.PackageSmoke.csproj'
+$project = Join-Path $repositoryRootPath 'eng/LatticeDbSharp.PackageSmoke/LatticeDbSharp.PackageSmoke.csproj'
 $packageSource = [IO.Path]::GetFullPath((Split-Path -Parent $resolvedPackage))
 
 $archive = [IO.Compression.ZipFile]::OpenRead($resolvedPackage)
@@ -57,7 +57,7 @@ $mapping = $configuration.AppendChild($nugetConfig.CreateElement('packageSourceM
 $localMapping = $mapping.AppendChild($nugetConfig.CreateElement('packageSource'))
 $localMapping.SetAttribute('key', 'local')
 $localPattern = $localMapping.AppendChild($nugetConfig.CreateElement('package'))
-$localPattern.SetAttribute('pattern', 'LatticeDBSharp')
+$localPattern.SetAttribute('pattern', 'LatticeDbSharp')
 $remoteMapping = $mapping.AppendChild($nugetConfig.CreateElement('packageSource'))
 $remoteMapping.SetAttribute('key', 'nuget.org')
 foreach ($pattern in @('Microsoft.*', 'NETStandard.Library', 'runtime.*', 'System.*')) {

@@ -1,6 +1,6 @@
 # Compatibility policy
 
-Managed and native versions are independent. A LatticeDBSharp release supports
+Managed and native versions are independent. A LatticeDbSharp release supports
 only the explicitly listed LatticeDB source revision and verified runtime
 identifiers.
 
@@ -8,7 +8,7 @@ Initial upstream baseline:
 
 | Component | Version |
 | --- | --- |
-| LatticeDBSharp | 0.1.0-preview.1 |
+| LatticeDbSharp | 0.1.0-preview.1 |
 | LatticeDB | v0.15.0 |
 | LatticeDB commit | 9800159e22e200f2b6888c7c6be1810adb695506 |
 | Zig toolchain | 0.16.0 |
@@ -29,7 +29,7 @@ incomplete final WAL frame. Patch identity is part of every native asset
 manifest and the NuGet package audit.
 
 Persisted file-format compatibility is an upstream contract that must be
-checked independently for every upgrade. LatticeDBSharp does not infer it from
+checked independently for every upgrade. LatticeDbSharp does not infer it from
 C ABI compatibility or promise compatibility that the pinned upstream release
 does not establish.
 

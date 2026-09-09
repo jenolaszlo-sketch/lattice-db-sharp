@@ -43,7 +43,7 @@ jobs:
           LATTICEDBSHARP_NATIVE_LIBRARY: ${{ steps.native.outputs.library }}
           LATTICEDBSHARP_ABI_MANIFEST: ${{ github.workspace }}/native/staging/linux-x64/abi.json
         run: >-
-          dotnet test tests/LatticeDBSharp.IntegrationTests/LatticeDBSharp.IntegrationTests.csproj
+          dotnet test tests/LatticeDbSharp.IntegrationTests/LatticeDbSharp.IntegrationTests.csproj
           --configuration Release
           -p:EnableNativeTests=true
       - uses: actions/upload-artifact@v6
@@ -85,7 +85,7 @@ jobs:
           LATTICEDBSHARP_NATIVE_LIBRARY: ${{ steps.native.outputs.library }}
           LATTICEDBSHARP_ABI_MANIFEST: ${{ github.workspace }}/native/staging/win-x64/abi.json
         run: >-
-          dotnet test tests/LatticeDBSharp.IntegrationTests/LatticeDBSharp.IntegrationTests.csproj
+          dotnet test tests/LatticeDbSharp.IntegrationTests/LatticeDbSharp.IntegrationTests.csproj
           --configuration Release
           -p:EnableNativeTests=true
       - uses: actions/upload-artifact@v6
@@ -127,9 +127,9 @@ jobs:
           LATTICEDBSHARP_NATIVE_LIBRARY: ${{ github.workspace }}/native/staging/linux-x64/liblattice.so
           LATTICEDBSHARP_ABI_MANIFEST: ${{ github.workspace }}/native/staging/linux-x64/abi.json
         run: |
-          dotnet build LatticeDBSharp.slnx --configuration Release
-          dotnet test tests/LatticeDBSharp.Tests/LatticeDBSharp.Tests.csproj --configuration Release --no-build
-          dotnet test tests/LatticeDBSharp.IntegrationTests/LatticeDBSharp.IntegrationTests.csproj --configuration Release -p:EnableNativeTests=true
+          dotnet build LatticeDbSharp.slnx --configuration Release
+          dotnet test tests/LatticeDbSharp.Tests/LatticeDbSharp.Tests.csproj --configuration Release --no-build
+          dotnet test tests/LatticeDbSharp.IntegrationTests/LatticeDbSharp.IntegrationTests.csproj --configuration Release -p:EnableNativeTests=true
 
       - name: Pack
         shell: bash
@@ -138,7 +138,7 @@ jobs:
           if [ "$GITHUB_REF_TYPE" = "tag" ]; then
             args+=(--property:PackageVersion="${GITHUB_REF_NAME#v}")
           fi
-          dotnet pack src/LatticeDBSharp/LatticeDBSharp.csproj \
+          dotnet pack src/LatticeDbSharp/LatticeDbSharp.csproj \
             --configuration Release \
             --output ./artifacts \
             "${args[@]}"
@@ -146,7 +146,7 @@ jobs:
       - name: Verify package contents and licensing boundary
         shell: pwsh
         run: |
-          $packages = @(Get-ChildItem artifacts/LatticeDBSharp.*.nupkg)
+          $packages = @(Get-ChildItem artifacts/LatticeDbSharp.*.nupkg)
           if ($packages.Count -ne 1) { throw "Expected one package; found $($packages.Count)." }
           ./eng/Test-NuGetPackageVerifier.ps1 -PackagePath $packages[0].FullName
 
@@ -172,7 +172,7 @@ jobs:
       - name: Smoke-test package on Linux x64
         shell: pwsh
         run: |
-          $package = (Get-ChildItem artifacts/LatticeDBSharp.*.nupkg).FullName
+          $package = (Get-ChildItem artifacts/LatticeDbSharp.*.nupkg).FullName
           ./eng/Test-NuGetConsumer.ps1 -PackagePath $package
 
   package-smoke-windows:
@@ -191,7 +191,7 @@ jobs:
       - name: Smoke-test package on Windows x64
         shell: pwsh
         run: |
-          $package = (Get-ChildItem artifacts/LatticeDBSharp.*.nupkg).FullName
+          $package = (Get-ChildItem artifacts/LatticeDbSharp.*.nupkg).FullName
           ./eng/Test-NuGetConsumer.ps1 -PackagePath $package
 
   publish:

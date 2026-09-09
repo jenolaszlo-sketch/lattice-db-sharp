@@ -47,14 +47,14 @@ try {
     if ($null -eq $license -or $license.type -ne 'expression' -or $license.'#text' -ne 'Apache-2.0') {
         throw "Expected PackageLicenseExpression Apache-2.0; found '$($license.'#text')'."
     }
-    if ($nuspec.package.metadata.id -cne 'LatticeDBSharp') {
-        throw "Expected package ID 'LatticeDBSharp'; found '$($nuspec.package.metadata.id)'."
+    if ($nuspec.package.metadata.id -cne 'LatticeDbSharp') {
+        throw "Expected package ID 'LatticeDbSharp'; found '$($nuspec.package.metadata.id)'."
     }
     if ($nuspec.package.metadata.repository.url -cne 'https://github.com/jenolaszlo-sketch/lattice-db-sharp') {
         throw 'Package repository URL is missing or incorrect.'
     }
 
-    $upstreamManifest = Read-ArchiveJson -Archive $archive -EntryName 'build/LatticeDBSharp/upstream.json'
+    $upstreamManifest = Read-ArchiveJson -Archive $archive -EntryName 'build/LatticeDbSharp/upstream.json'
     $upstreamPatchSet = $upstreamManifest.patchSet
     $packagedPatchManifest = $null
     $packagedPatches = @()
@@ -65,7 +65,7 @@ try {
             $upstreamPatchSet.sha256 -notmatch '^[0-9a-f]{64}$') {
             throw 'Package upstream manifest contains an invalid native patch-set reference.'
         }
-        $patchManifestPackagePath = "build/LatticeDBSharp/$($upstreamPatchSet.path)"
+        $patchManifestPackagePath = "build/LatticeDbSharp/$($upstreamPatchSet.path)"
         $packagedPatchManifest = Read-ArchiveJson -Archive $archive -EntryName $patchManifestPackagePath
         if ($packagedPatchManifest.schemaVersion -ne 1 -or
             $packagedPatchManifest.id -cne $upstreamPatchSet.id -or
@@ -100,17 +100,17 @@ try {
         'NOTICE',
         'THIRD_PARTY_NOTICES.md',
         'THIRD_PARTY_LICENSES/LICENSE.LatticeDB',
-        'build/LatticeDBSharp/upstream.json',
-        'build/LatticeDBSharp/capabilities.json',
-        'build/LatticeDBSharp/zig-toolchains.json',
-        'build/LatticeDBSharp/native/linux-x64/abi.json',
-        'build/LatticeDBSharp/native/linux-x64/asset.json',
-        'build/LatticeDBSharp/native/win-x64/abi.json',
-        'build/LatticeDBSharp/native/win-x64/asset.json',
+        'build/LatticeDbSharp/upstream.json',
+        'build/LatticeDbSharp/capabilities.json',
+        'build/LatticeDbSharp/zig-toolchains.json',
+        'build/LatticeDbSharp/native/linux-x64/abi.json',
+        'build/LatticeDbSharp/native/linux-x64/asset.json',
+        'build/LatticeDbSharp/native/win-x64/abi.json',
+        'build/LatticeDbSharp/native/win-x64/asset.json',
         'runtimes/linux-x64/native/liblattice.so',
         'runtimes/win-x64/native/lattice.dll',
-        'lib/net8.0/LatticeDBSharp.dll',
-        'lib/net8.0/LatticeDBSharp.xml'
+        'lib/net8.0/LatticeDbSharp.dll',
+        'lib/net8.0/LatticeDbSharp.xml'
     )) {
         $requiredCount = @($entries | Where-Object { $_ -ceq $required }).Count
         if ($requiredCount -ne 1) {
@@ -120,33 +120,33 @@ try {
 
     $allowedExact = @(
         '_rels/.rels',
-        'LatticeDBSharp.nuspec',
+        'LatticeDbSharp.nuspec',
         'LICENSE',
         'NOTICE',
         'README.md',
         'THIRD_PARTY_NOTICES.md',
         'THIRD_PARTY_LICENSES/LICENSE.LatticeDB',
-        'lib/net8.0/LatticeDBSharp.dll',
-        'lib/net8.0/LatticeDBSharp.xml',
-        'build/LatticeDBSharp/upstream.json',
-        'build/LatticeDBSharp/capabilities.json',
-        'build/LatticeDBSharp/zig-toolchains.json',
-        'build/LatticeDBSharp/native/linux-x64/abi.json',
-        'build/LatticeDBSharp/native/linux-x64/asset.json',
-        'build/LatticeDBSharp/native/win-x64/abi.json',
-        'build/LatticeDBSharp/native/win-x64/asset.json',
+        'lib/net8.0/LatticeDbSharp.dll',
+        'lib/net8.0/LatticeDbSharp.xml',
+        'build/LatticeDbSharp/upstream.json',
+        'build/LatticeDbSharp/capabilities.json',
+        'build/LatticeDbSharp/zig-toolchains.json',
+        'build/LatticeDbSharp/native/linux-x64/abi.json',
+        'build/LatticeDbSharp/native/linux-x64/asset.json',
+        'build/LatticeDbSharp/native/win-x64/abi.json',
+        'build/LatticeDbSharp/native/win-x64/asset.json',
         'runtimes/linux-x64/native/liblattice.so',
         'runtimes/win-x64/native/lattice.dll',
         'package/services/metadata/core-properties/nuget.psmdcp',
         '[Content_Types].xml'
     )
     if ($null -ne $upstreamPatchSet) {
-        $allowedExact += "build/LatticeDBSharp/$($upstreamPatchSet.path)"
+        $allowedExact += "build/LatticeDbSharp/$($upstreamPatchSet.path)"
         foreach ($patch in $packagedPatches) {
             if ($patch.path -notmatch '^native/patches/' -or $patch.path -match '(^|/)\.\.(/|$)') {
                 throw "Packaged native patch '$($patch.id)' path is outside native/patches."
             }
-            $allowedExact += "build/LatticeDBSharp/$($patch.path)"
+            $allowedExact += "build/LatticeDbSharp/$($patch.path)"
         }
     }
     $unexpected = @($entries | Where-Object {
@@ -170,7 +170,7 @@ try {
         @{ RuntimeIdentifier = 'linux-x64'; FileName = 'liblattice.so' },
         @{ RuntimeIdentifier = 'win-x64'; FileName = 'lattice.dll' }
     )) {
-        $assetPath = "build/LatticeDBSharp/native/$($contract.RuntimeIdentifier)/asset.json"
+        $assetPath = "build/LatticeDbSharp/native/$($contract.RuntimeIdentifier)/asset.json"
         $assetEntries = @($archive.Entries | Where-Object { $_.FullName -ceq $assetPath })
         if ($assetEntries.Count -ne 1) {
             throw "Package must contain exactly one '$assetPath'; found $($assetEntries.Count)."
@@ -212,7 +212,7 @@ try {
                     throw "Packaged $($contract.RuntimeIdentifier) asset patch provenance does not match its patch manifest."
                 }
 
-                $patchPackagePath = "build/LatticeDBSharp/$($expectedPatch.path)"
+                $patchPackagePath = "build/LatticeDbSharp/$($expectedPatch.path)"
                 $patchEntry = @($archive.Entries | Where-Object { $_.FullName -ceq $patchPackagePath })[0]
                 $patchStream = $patchEntry.Open()
                 $patchSha = [Security.Cryptography.SHA256]::Create()

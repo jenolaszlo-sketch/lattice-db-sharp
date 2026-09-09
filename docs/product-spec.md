@@ -1,18 +1,18 @@
-# LatticeDBSharp
+# LatticeDbSharp
 
 ## Purpose
 
-`LatticeDBSharp` is an idiomatic, safe .NET binding for LatticeDB.
+`LatticeDbSharp` is an idiomatic, safe .NET binding for LatticeDB.
 
 LatticeDB exposes its primary API through a native C ABI. Existing Python, TypeScript and Go bindings wrap that C API. The C interface uses opaque handles, explicit allocation/free semantics, typed values, transactions, graph operations, vector search, full-text search, Cypher queries and durable streams.
 
-The goal of LatticeDBSharp is to provide the same capabilities to .NET applications without exposing P/Invoke, native handles, pointer management or manual memory ownership to consumers.
+The goal of LatticeDbSharp is to provide the same capabilities to .NET applications without exposing P/Invoke, native handles, pointer management or manual memory ownership to consumers.
 
 The initial motivation is Penghou, particularly Hetu and potentially Cangjie, but the package must remain independent of Penghou concepts.
 
 ## Goals
 
-LatticeDBSharp should:
+LatticeDbSharp should:
 
 1. Provide a thin and predictable .NET API over the official LatticeDB C API.
 2. Correctly manage all native resources using `SafeHandle`, `IDisposable` and deterministic ownership.
@@ -54,21 +54,21 @@ latticedb-sharp
 Primary namespace:
 
 ```text
-LatticeDBSharp
+LatticeDbSharp
 ```
 
 Initial package:
 
 ```text
-LatticeDBSharp
+LatticeDbSharp
 ```
 
 Suggested structure:
 
 ```text
-LatticeDBSharp/
+LatticeDbSharp/
 ├── src/
-│   └── LatticeDBSharp/
+│   └── LatticeDbSharp/
 │       ├── Database/
 │       ├── Transactions/
 │       ├── Graph/
@@ -78,12 +78,12 @@ LatticeDBSharp/
 │       ├── Interop/
 │       └── Errors/
 ├── tests/
-│   ├── LatticeDBSharp.Tests/
-│   └── LatticeDBSharp.IntegrationTests/
+│   ├── LatticeDbSharp.Tests/
+│   └── LatticeDbSharp.IntegrationTests/
 ├── benchmarks/
-│   └── LatticeDBSharp.Benchmarks/
+│   └── LatticeDbSharp.Benchmarks/
 ├── samples/
-│   └── LatticeDBSharp.QuickStart/
+│   └── LatticeDbSharp.QuickStart/
 └── native/
 ```
 
@@ -107,7 +107,7 @@ Use source-generated interop through `LibraryImport` where appropriate rather th
 
 ## Upstream versioning
 
-LatticeDBSharp must pin an exact upstream LatticeDB release or commit.
+LatticeDbSharp must pin an exact upstream LatticeDB release or commit.
 
 Do not dynamically assume compatibility with arbitrary installed LatticeDB versions.
 
@@ -124,7 +124,7 @@ The managed package version and LatticeDB native version should remain independe
 For example:
 
 ```text
-LatticeDBSharp 0.1.0
+LatticeDbSharp 0.1.0
 LatticeDB native 0.x.y
 ```
 
@@ -136,7 +136,7 @@ ABI compatibility is a first-class requirement.
 
 The current LatticeDB API uses versioned open option structures. `lattice_open_options_v2`, `v3` and `v4` extend earlier structures, and the current documentation explicitly requires matching initialization because fields such as `struct_size` and `lock` affect ABI and behavior.
 
-LatticeDBSharp must therefore:
+LatticeDbSharp must therefore:
 
 * map structures exactly according to `lattice.h`
 * validate structure layout and field sizes
@@ -255,7 +255,7 @@ Behavior:
 
 LatticeDB supports multiple concurrent readers but only one active write transaction. A second writer currently fails rather than transparently queueing.
 
-LatticeDBSharp should preserve this semantic rather than silently introduce hidden global locking.
+LatticeDbSharp should preserve this semantic rather than silently introduce hidden global locking.
 
 A convenience writer serialization mechanism may be considered later, but it must be opt-in.
 
@@ -382,7 +382,7 @@ var rows = db.Query(
 
 The C API follows a prepare, bind, execute pattern and can determine whether a prepared query performs writes.
 
-LatticeDBSharp may use this capability for a convenience API only when commit
+LatticeDbSharp may use this capability for a convenience API only when commit
 timing is unambiguous. The core API executes queries inside explicit read or
 write transactions. A future:
 
@@ -542,7 +542,7 @@ public readonly record struct LatticeVectorMatch(
 
 Support bulk vector insertion if exposed by the pinned C API.
 
-Embedding generation is explicitly outside the core wrapper. Penghou can use Baize or another component to generate vectors before passing them to LatticeDBSharp.
+Embedding generation is explicitly outside the core wrapper. Penghou can use Baize or another component to generate vectors before passing them to LatticeDbSharp.
 
 ## Full-text search
 
@@ -648,7 +648,7 @@ RID-specific runtime assets
 Users should normally be able to:
 
 ```text
-dotnet add package LatticeDBSharp
+dotnet add package LatticeDbSharp
 ```
 
 and immediately open a database.
@@ -688,7 +688,7 @@ Only publish a RID after it passes integration tests.
 
 Current official LatticeDB installation documentation describes `.so` for Linux
 and `.dylib` for macOS, while the upstream release workflow does not publish a
-Windows binary. LatticeDBSharp nevertheless builds the pinned source unchanged
+Windows binary. LatticeDbSharp nevertheless builds the pinned source unchanged
 with Zig for `x86_64-windows-gnu` and packages the resulting `lattice.dll`.
 
 The Windows x64 feasibility gate is complete:
@@ -699,7 +699,7 @@ The Windows x64 feasibility gate is complete:
 4. integration tests pass.
 5. native assets can be packaged reproducibly.
 
-Windows x64 is therefore an advertised LatticeDBSharp preview runtime. Other
+Windows x64 is therefore an advertised LatticeDbSharp preview runtime. Other
 Windows architectures remain unsupported until they pass the same gate.
 
 ## Native build
@@ -951,7 +951,7 @@ A stable `1.0` should wait until both the API shape and upstream ABI integration
 
 After Phase 2, create a separate experimental integration in Hetu.
 
-Do not add Hetu concepts to LatticeDBSharp.
+Do not add Hetu concepts to LatticeDbSharp.
 
 Load a representative repository as a graph containing:
 
@@ -995,13 +995,13 @@ Find architectural documentation associated with the affected components.
 Construct the smallest useful context set for changing a workflow behavior.
 ```
 
-The success criterion is not merely that LatticeDBSharp works.
+The success criterion is not merely that LatticeDbSharp works.
 
 The spike should determine whether combining graph traversal, semantic search and full-text retrieval materially improves Hetu's context selection.
 
 ## Acceptance criteria for 0.1
 
-`LatticeDBSharp 0.1.0` is complete when:
+`LatticeDbSharp 0.1.0` is complete when:
 
 * no public API exposes raw native pointers
 * all owned native resources have deterministic cleanup
@@ -1023,7 +1023,7 @@ The spike should determine whether combining graph traversal, semantic search an
 
 ## Architectural principle
 
-LatticeDBSharp is a binding, not a framework.
+LatticeDbSharp is a binding, not a framework.
 
 Its responsibility is:
 
@@ -1034,7 +1034,7 @@ safe native interop
         ↓
 idiomatic .NET types
         ↓
-LatticeDBSharp
+LatticeDbSharp
 ```
 
 Domain-specific behavior remains above it:
@@ -1046,7 +1046,7 @@ Domain-specific behavior remains above it:
                     │
               other products
                     │
-             LatticeDBSharp
+             LatticeDbSharp
                     │
              LatticeDB C API
                     │

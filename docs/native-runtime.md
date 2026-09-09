@@ -46,7 +46,7 @@ with actionable diagnostics rather than falling back to an arbitrary library.
 The v0.15.0 upstream release workflow does not publish a Windows binary, so the
 Windows x64 asset is built with the pinned Zig toolchain from the
 same pinned base and disclosed patch set as Linux x64. This establishes a viable
-LatticeDBSharp packaging target, but does not imply that upstream publishes or
+LatticeDbSharp packaging target, but does not imply that upstream publishes or
 supports Windows.
 
 ## Reproducible feasibility build

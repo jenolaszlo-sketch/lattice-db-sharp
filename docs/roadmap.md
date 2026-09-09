@@ -1,4 +1,4 @@
-# LatticeDBSharp roadmap
+# LatticeDbSharp roadmap
 
 ## Vision
 
@@ -98,7 +98,7 @@ through the wrapper with verified ownership and error behavior.
 - [ ] Transactional relationship between graph mutations and stream records.
 - [ ] Restart, replay, and offset tests.
 
-LatticeDBSharp exposes these as local durable logs, not as a queue, lease,
+LatticeDbSharp exposes these as local durable logs, not as a queue, lease,
 retry, or distributed messaging framework.
 
 ## Phase 4 — hardening

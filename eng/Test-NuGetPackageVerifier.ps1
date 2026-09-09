@@ -124,7 +124,7 @@ try {
     $patchArchive = [IO.Compression.ZipFile]::OpenRead($resolvedPackage)
     try {
         $patchEntryName = @($patchArchive.Entries |
-            Where-Object { $_.FullName -like 'build/LatticeDBSharp/native/patches/*.patch' } |
+            Where-Object { $_.FullName -like 'build/LatticeDbSharp/native/patches/*.patch' } |
             Select-Object -ExpandProperty FullName -First 1)
     }
     finally {

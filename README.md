@@ -1,16 +1,16 @@
-# LatticeDBSharp
+# LatticeDbSharp
 
-[![NuGet](https://img.shields.io/nuget/v/LatticeDBSharp)](https://www.nuget.org/packages/LatticeDBSharp)
+[![NuGet](https://img.shields.io/nuget/v/LatticeDbSharp)](https://www.nuget.org/packages/LatticeDbSharp)
 [![CI](https://github.com/jenolaszlo-sketch/lattice-db-sharp/actions/workflows/ci.yml/badge.svg)](https://github.com/jenolaszlo-sketch/lattice-db-sharp/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/jenolaszlo-sketch/lattice-db-sharp)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)](https://dotnet.microsoft.com/)
 
-LatticeDBSharp is an independent, safe, idiomatic .NET binding for
+LatticeDbSharp is an independent, safe, idiomatic .NET binding for
 [LatticeDB](https://github.com/jeffhajewski/latticedb), an embedded single-file
 property-graph database with Cypher, vector search, full-text search, ACID
 transactions, and durable streams.
 
-LatticeDBSharp is an **unofficial community wrapper**. It is not affiliated
+LatticeDbSharp is an **unofficial community wrapper**. It is not affiliated
 with, sponsored by, endorsed by, or maintained by the LatticeDB project or its
 authors.
 
@@ -18,7 +18,7 @@ LatticeDB was created by
 [Jeff Hajewski](https://github.com/jeffhajewski) and is developed by the
 [LatticeDB contributors](https://github.com/jeffhajewski/latticedb/graphs/contributors).
 They receive full credit for the database engine, C API, file format,
-documentation, and upstream language bindings. LatticeDBSharp claims no
+documentation, and upstream language bindings. LatticeDbSharp claims no
 ownership of LatticeDB, its source code, native binaries, documentation,
 project name, or trademarks.
 
@@ -31,7 +31,7 @@ P/Invoke, pointers, opaque native handles, or manual memory ownership:
            |
     idiomatic synchronous .NET API
            |
-    LatticeDBSharp
+    LatticeDbSharp
 
 ## Status
 
@@ -59,7 +59,7 @@ search, and durable change streams in one embedded database and query layer.
 That makes it a compelling candidate for connected local knowledge and code
 intelligence workloads without operating a database server.
 
-LatticeDBSharp stays a binding rather than becoming an ORM or Penghou-specific
+LatticeDbSharp stays a binding rather than becoming an ORM or Penghou-specific
 framework. Hetu may later evaluate it against the current DuckDB-backed design,
 but replacement is a benchmark and capability decision after the wrapper's
 retrieval features are proven.
@@ -75,7 +75,7 @@ index, and stream surfaces follow only after their ownership models are
 verified.
 
 The native v0.15.0 vector setter accepts a `key` parameter but ignores it and
-stores one vector per node, so LatticeDBSharp intentionally omits that key from
+stores one vector per node, so LatticeDbSharp intentionally omits that key from
 the managed API rather than implying multiple named vectors.
 
 Fake asynchronous wrappers, LINQ-to-Cypher, object mapping, embedding generation,
@@ -86,11 +86,11 @@ and generic database abstractions are non-goals.
 The first preview contains verified Linux x64 and Windows x64 native assets:
 
 ```shell
-dotnet add package LatticeDBSharp --prerelease
+dotnet add package LatticeDbSharp --prerelease
 ```
 
 ```csharp
-using LatticeDBSharp;
+using LatticeDbSharp;
 
 using var database = LatticeDatabase.OpenMemory();
 LatticeNodeId alice;
@@ -112,7 +112,7 @@ Transactions, prepared queries, and results are native owners. Dispose them in
 reverse nesting order; a database intentionally refuses to close while a child
 is active. An uncommitted transaction rolls back when disposed.
 
-LatticeDBSharp transactions are explicit and do not currently enlist in
+LatticeDbSharp transactions are explicit and do not currently enlist in
 `System.Transactions.Transaction.Current`. The native API has no prepare/2PC
 contract, so ambient enlistment would otherwise imply guarantees it cannot make.
 
@@ -120,8 +120,8 @@ contract, so ambient enlistment would otherwise imply guarantees it cannot make.
 
 The managed scaffold requires the .NET 10 SDK and targets .NET 8:
 
-    dotnet build LatticeDBSharp.slnx
-    dotnet test tests/LatticeDBSharp.Tests/LatticeDBSharp.Tests.csproj
+    dotnet build LatticeDbSharp.slnx
+    dotnet test tests/LatticeDbSharp.Tests/LatticeDbSharp.Tests.csproj
 
 Native integration tests are skipped by default for managed-only development.
 The Linux x64 and Windows x64 CI gates build the exact pinned base plus the
@@ -141,7 +141,7 @@ own lifecycle, recovery, locking, and cleanup gates pass.
 
 ## License and attribution
 
-Only the independently written LatticeDBSharp wrapper source is licensed under
+Only the independently written LatticeDbSharp wrapper source is licensed under
 the Apache License 2.0. LatticeDB is copyright © 2025 Jeff Hajewski and is
 licensed separately under the MIT License. LatticeDB and all upstream artifacts
 retain their original ownership, license, copyright, and attribution terms.

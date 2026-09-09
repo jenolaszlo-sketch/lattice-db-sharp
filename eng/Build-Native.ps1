@@ -300,7 +300,7 @@ $null = $abiJson | ConvertFrom-Json
 $abiPath = Join-Path $stagingDirectory 'abi.json'
 [IO.File]::WriteAllText($abiPath, "$abiJson`n", [Text.UTF8Encoding]::new($false))
 
-$nativeMethodsPath = Join-Path $repositoryRootPath 'src/LatticeDBSharp/Interop/NativeMethods.cs'
+$nativeMethodsPath = Join-Path $repositoryRootPath 'src/LatticeDbSharp/Interop/NativeMethods.cs'
 $nativeMethodsSource = Get-Content -Raw -LiteralPath $nativeMethodsPath
 $requiredSymbols = @(
     [regex]::Matches($nativeMethodsSource, 'EntryPoint\s*=\s*"(?<symbol>lattice_[^"]+)"') |

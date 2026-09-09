@@ -8,10 +8,13 @@
     <LangVersion>latest</LangVersion>
     <Deterministic>true</Deterministic>
     <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/jenolaszlo-sketch/lattice-db-sharp</RepositoryUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <LatticeDbNativeVersion>0.15.0</LatticeDbNativeVersion>
+    <LatticeDbNativeCommit>9800159e22e200f2b6888c7c6be1810adb695506</LatticeDbNativeCommit>
   </PropertyGroup>
 </Project>

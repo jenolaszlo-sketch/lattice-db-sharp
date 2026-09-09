@@ -296,16 +296,19 @@ RemoveLabel
 GetLabels
 SetProperty
 GetProperty
-RemoveProperty
 SetVector
-GetVector where supported
 ```
+
+The v0.15.0 C API does not export direct node-property removal or vector-read
+functions. A managed operation may be added only after a parameterized Cypher
+implementation and its semantics are verified; it must not bind an invented C
+symbol.
 
 Edge operations should include:
 
 ```text
 CreateEdge
-DeleteEdge
+DeleteEdges(source, target, type)
 SetEdgeProperty
 GetEdgeProperty
 RemoveEdgeProperty
@@ -315,7 +318,10 @@ GetOutgoingEdgesByType
 GetIncomingEdgesByType
 ```
 
-Stable native node and edge IDs should be preserved.
+Stable native node and edge IDs should be preserved when returned by the API.
+The v0.15.0 deletion function identifies edges by source, target, and type, not
+by stable edge ID. The wrapper must make that multiplicity explicit and must not
+imply single-edge deletion until upstream semantics are proven.
 
 ## Value model
 
@@ -376,13 +382,17 @@ var rows = db.Query(
 
 The C API follows a prepare, bind, execute pattern and can determine whether a prepared query performs writes.
 
-LatticeDBSharp should use this capability so:
+LatticeDBSharp may use this capability for a convenience API only when commit
+timing is unambiguous. The core API executes queries inside explicit read or
+write transactions. A future:
 
 ```csharp
 db.Query(...)
 ```
 
-automatically selects a read or write transaction where appropriate.
+may automatically select a read or write transaction, but it must fully
+materialize detached results and commit a write before returning. It must never
+return lazy results tied to an already-disposed automatic transaction.
 
 Also expose prepared queries:
 
@@ -507,11 +517,14 @@ Do not collapse all errors into `InvalidOperationException`.
 ## Vector support
 
 Expose native vector operations without adding an embedding provider abstraction.
+The pinned v0.15.0 engine stores one configured vector per node; its C-API
+`key` parameter is currently ignored, so the managed API does not expose a
+misleading multi-vector namespace.
 
 Example:
 
 ```csharp
-tx.SetVector(nodeId, "embedding", embedding);
+tx.SetVector(nodeId, embedding);
 
 var matches = db.VectorSearch(
     embedding,
@@ -673,11 +686,12 @@ runtimes/win-arm64/native/
 
 Only publish a RID after it passes integration tests.
 
-Current official LatticeDB installation documentation explicitly describes `.so` for Linux and `.dylib` for macOS. Windows is not currently listed as a produced shared-library target in the installation instructions.
+Current official LatticeDB installation documentation describes `.so` for Linux
+and `.dylib` for macOS, while the upstream release workflow does not publish a
+Windows binary. LatticeDBSharp nevertheless builds the pinned source unchanged
+with Zig for `x86_64-windows-gnu` and packages the resulting `lattice.dll`.
 
-Therefore Windows support is a Phase 0 feasibility gate.
-
-Do not advertise Windows support until:
+The Windows x64 feasibility gate is complete:
 
 1. LatticeDB successfully builds for Windows.
 2. The C ABI loads correctly from .NET.
@@ -685,7 +699,8 @@ Do not advertise Windows support until:
 4. integration tests pass.
 5. native assets can be packaged reproducibly.
 
-If Windows proves unavailable upstream, LatticeDBSharp should initially support Linux and macOS while tracking Windows separately.
+Windows x64 is therefore an advertised LatticeDBSharp preview runtime. Other
+Windows architectures remain unsupported until they pass the same gate.
 
 ## Native build
 
@@ -833,18 +848,18 @@ Before building the complete API:
 
 1. Pin an upstream LatticeDB version.
 2. Build the shared library.
-3. Verify macOS ARM64.
-4. Verify Linux x64.
-5. Attempt Windows x64.
-6. Open a database from .NET.
-7. Create two nodes and an edge.
-8. Commit.
-9. Query through Cypher.
-10. Close and reopen.
-11. Validate persisted data.
-12. Verify native resource cleanup.
+3. Verify Linux x64 and Windows x64.
+4. Verify macOS ARM64.
+5. Open a database from .NET.
+6. Create two nodes and an edge.
+7. Commit.
+8. Query through Cypher.
+9. Close and reopen.
+10. Validate persisted data.
+11. Verify native resource cleanup.
 
-If Windows compilation requires modest upstream build work, keep that work isolated and document it.
+The Windows x64 build is isolated in the pinned Zig/toolchain gate and does not
+modify or fork upstream source.
 
 Do not fork LatticeDB unless genuinely necessary.
 

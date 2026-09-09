@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "latticedb-v0.15.0-durable-recovery",
+  "baseVersion": "0.15.0",
+  "baseReference": "v0.15.0",
+  "baseCommit": "9800159e22e200f2b6888c7c6be1810adb695506",
+  "patches": [
+    {
+      "order": 1,
+      "id": "durable-recovery",
+      "path": "native/patches/latticedb-v0.15.0-durable-recovery.patch",
+      "sha256": "19cfd8b7d092a03bec1311691f89169f350d40f4723028dc10c7a15a63349cd7",
+      "changedPaths": [
+        "src/storage/database.zig",
+        "src/storage/wal.zig"
+      ],
+      "description": "Persist the initial tree baseline before commits and repair a physically truncated final WAL frame before recovery continues."
+    }
+  ]
+}

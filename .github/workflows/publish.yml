@@ -1,43 +1,17 @@
-name: CI
+name: Publish to NuGet
 
 on:
   push:
-    branches: [main]
-  pull_request:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  managed:
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-2025, ubuntu-24.04, macos-15]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: |
-            8.0.x
-            10.0.x
-      - name: Verify pinned upstream contract
-        shell: pwsh
-        run: ./eng/Verify-UpstreamManifest.ps1 -VerifyRemote
-      - run: dotnet restore LatticeDBSharp.slnx
-      - run: dotnet build LatticeDBSharp.slnx --no-restore --configuration Release
-      - run: dotnet test tests/LatticeDBSharp.Tests/LatticeDBSharp.Tests.csproj --no-build --configuration Release
-      - run: dotnet format LatticeDBSharp.slnx --verify-no-changes --no-restore
-
   native-linux-x64:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
@@ -55,7 +29,7 @@ jobs:
         run: |
           $directory = ./eng/Install-Zig.ps1 -RuntimeIdentifier linux-x64
           "directory=$directory" >> $env:GITHUB_OUTPUT
-      - name: Build and inspect pinned native library
+      - name: Build verified Linux x64 native asset
         id: native
         shell: pwsh
         run: |
@@ -63,7 +37,7 @@ jobs:
             -RuntimeIdentifier linux-x64 `
             -ZigDirectory '${{ steps.zig.outputs.directory }}'
           "library=$library" >> $env:GITHUB_OUTPUT
-      - name: Run native compatibility tests
+      - name: Run Linux x64 native integration tests
         shell: pwsh
         env:
           LATTICEDBSHARP_NATIVE_LIBRARY: ${{ steps.native.outputs.library }}
@@ -97,7 +71,7 @@ jobs:
         run: |
           $directory = ./eng/Install-Zig.ps1 -RuntimeIdentifier win-x64
           "directory=$directory" >> $env:GITHUB_OUTPUT
-      - name: Build and inspect pinned native library
+      - name: Build verified Windows x64 native asset
         id: native
         shell: pwsh
         run: |
@@ -105,7 +79,7 @@ jobs:
             -RuntimeIdentifier win-x64 `
             -ZigDirectory '${{ steps.zig.outputs.directory }}'
           "library=$library" >> $env:GITHUB_OUTPUT
-      - name: Run native compatibility tests
+      - name: Run Windows x64 native integration tests
         shell: pwsh
         env:
           LATTICEDBSHARP_NATIVE_LIBRARY: ${{ steps.native.outputs.library }}
@@ -122,48 +96,69 @@ jobs:
 
   pack:
     needs: [native-linux-x64, native-windows-x64]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-dotnet@v5
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: |
             8.0.x
             10.0.x
-      - uses: actions/download-artifact@v6
-        with:
-          name: native-linux-x64-evidence
-          path: native/staging/linux-x64
+
       - uses: actions/download-artifact@v6
         with:
           name: native-windows-x64-evidence
           path: native/staging/win-x64
+      - uses: actions/download-artifact@v6
+        with:
+          name: native-linux-x64-evidence
+          path: native/staging/linux-x64
+
       - name: Verify pinned upstream contract
         shell: pwsh
         run: ./eng/Verify-UpstreamManifest.ps1 -VerifyRemote
-      - run: dotnet restore src/LatticeDBSharp/LatticeDBSharp.csproj
-      - run: dotnet pack src/LatticeDBSharp/LatticeDBSharp.csproj --no-restore --configuration Release --output artifacts/packages
+
+      - name: Build and test
+        shell: pwsh
+        env:
+          LATTICEDBSHARP_NATIVE_LIBRARY: ${{ github.workspace }}/native/staging/linux-x64/liblattice.so
+          LATTICEDBSHARP_ABI_MANIFEST: ${{ github.workspace }}/native/staging/linux-x64/abi.json
+        run: |
+          dotnet build LatticeDBSharp.slnx --configuration Release
+          dotnet test tests/LatticeDBSharp.Tests/LatticeDBSharp.Tests.csproj --configuration Release --no-build
+          dotnet test tests/LatticeDBSharp.IntegrationTests/LatticeDBSharp.IntegrationTests.csproj --configuration Release -p:EnableNativeTests=true
+
+      - name: Pack
+        shell: bash
+        run: |
+          args=()
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            args+=(--property:PackageVersion="${GITHUB_REF_NAME#v}")
+          fi
+          dotnet pack src/LatticeDBSharp/LatticeDBSharp.csproj \
+            --configuration Release \
+            --output ./artifacts \
+            "${args[@]}"
+
       - name: Verify package contents and licensing boundary
         shell: pwsh
         run: |
-          $packages = @(Get-ChildItem artifacts/packages/LatticeDBSharp.*.nupkg)
+          $packages = @(Get-ChildItem artifacts/LatticeDBSharp.*.nupkg)
           if ($packages.Count -ne 1) { throw "Expected one package; found $($packages.Count)." }
           ./eng/Test-NuGetPackageVerifier.ps1 -PackagePath $packages[0].FullName
-          ./eng/Test-NuGetConsumer.ps1 -PackagePath $packages[0].FullName
+
       - uses: actions/upload-artifact@v6
         with:
           name: nuget-packages
-          path: artifacts/packages/*.*nupkg
+          path: artifacts/*.*nupkg
           if-no-files-found: error
 
-  package-smoke:
+  package-smoke-linux:
     needs: pack
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-2025, ubuntu-24.04]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
@@ -173,9 +168,61 @@ jobs:
       - uses: actions/download-artifact@v6
         with:
           name: nuget-packages
-          path: artifacts/packages
-      - name: Smoke-test package on ${{ matrix.os }}
+          path: artifacts
+      - name: Smoke-test package on Linux x64
         shell: pwsh
         run: |
-          $package = (Get-ChildItem artifacts/packages/LatticeDBSharp.*.nupkg).FullName
+          $package = (Get-ChildItem artifacts/LatticeDBSharp.*.nupkg).FullName
           ./eng/Test-NuGetConsumer.ps1 -PackagePath $package
+
+  package-smoke-windows:
+    needs: pack
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+      - uses: actions/download-artifact@v6
+        with:
+          name: nuget-packages
+          path: artifacts
+      - name: Smoke-test package on Windows x64
+        shell: pwsh
+        run: |
+          $package = (Get-ChildItem artifacts/LatticeDBSharp.*.nupkg).FullName
+          ./eng/Test-NuGetConsumer.ps1 -PackagePath $package
+
+  publish:
+    needs: [pack, package-smoke-linux, package-smoke-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+      - uses: actions/download-artifact@v6
+        with:
+          name: nuget-packages
+          path: artifacts
+      - name: NuGet login
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+      - name: Push package
+        run: >
+          dotnet nuget push ./artifacts/*.nupkg
+          --source https://api.nuget.org/v3/index.json
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --skip-duplicate
+      - name: Push symbols
+        run: >
+          dotnet nuget push ./artifacts/*.snupkg
+          --source https://api.nuget.org/v3/index.json
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --skip-duplicate

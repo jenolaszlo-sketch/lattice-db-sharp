@@ -37,6 +37,12 @@ LatticeDB's multiple-reader/single-writer behavior is preserved. The wrapper
 does not silently add a process-wide writer queue. Any future writer
 serialization helper must be explicit and opt-in.
 
+Native transactions are explicit and do not enlist in ambient
+`System.Transactions` for the preview. The pinned engine exposes no prepare or
+two-phase-commit contract. Any future opt-in enlistment must reject promotion,
+preserve single-writer behavior, and prove commit, rollback, and uncertain
+outcome semantics without implying distributed atomicity.
+
 ## Planned source layout
 
 - Interop — generated or header-verified C declarations and ABI constants.

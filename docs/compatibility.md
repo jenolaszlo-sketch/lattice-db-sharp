@@ -9,8 +9,8 @@ Initial upstream baseline:
 | Component | Version |
 | --- | --- |
 | LatticeDBSharp | 0.1.0-preview.1 |
-| LatticeDB | v0.10.0 |
-| LatticeDB commit | bcf4c553411cb6758b4b1481f1ec0be5e4872af9 |
+| LatticeDB | v0.15.0 |
+| LatticeDB commit | 9800159e22e200f2b6888c7c6be1810adb695506 |
 | Zig toolchain | 0.16.0 |
 
 Changing the upstream header requires an ABI review covering versioned option
@@ -19,8 +19,20 @@ pointer ownership, UTF-8, size_t, integer widths, and free functions.
 
 A platform is supported only after its exact native asset passes ABI,
 functional, persistence/recovery, locking, and repeated cleanup tests. Linux
-x64 and macOS ARM64 are the first feasibility targets. Windows x64 is
-experimental until upstream builds and the complete native gate passes.
+x64 and Windows x64 have verified build/package/load mechanics and pass all 22
+expanded native tests. macOS ARM64 remains the next candidate.
 
-Persisted LatticeDB file-format compatibility is an upstream guarantee and must
-not be inferred from C ABI compatibility alone.
+The packaged native assets are built from the pinned upstream commit plus the
+hash-verified patch set declared in `native/upstream.json`. That patch persists
+the initial tree baseline before commits and repairs only a physically
+incomplete final WAL frame. Patch identity is part of every native asset
+manifest and the NuGet package audit.
+
+Persisted file-format compatibility is an upstream contract that must be
+checked independently for every upgrade. LatticeDBSharp does not infer it from
+C ABI compatibility or promise compatibility that the pinned upstream release
+does not establish.
+
+The wrapper preserves the pinned engine's Cypher dialect rather than claiming
+full openCypher compatibility. For example, v0.15.0 does not plan standalone
+`RETURN` expressions; supported query examples use an explicit graph clause.

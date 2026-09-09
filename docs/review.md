@@ -3,23 +3,58 @@
 Reviewed 2026-09-07 against local commit `60258c0` and the exact upstream
 [v0.10.0 header](https://github.com/jeffhajewski/latticedb/blob/bcf4c553411cb6758b4b1481f1ec0be5e4872af9/include/lattice.h).
 
+## Remediation status
+
+The implementation pass following this review deliberately moved the immutable
+upstream pin to v0.15.0 at commit
+`9800159e22e200f2b6888c7c6be1810adb695506`. The exact header is now archived
+and hash-verified, and `native/capabilities.json` is the machine-readable record
+of supported, deferred, unsupported, and platform-blocked features.
+
+- R01 is reconciled against v0.15.0. Open options v4, write classification,
+  per-property FTS indexes, and database-lock errors now exist. Direct node
+  property removal and deletion by edge ID remain unsupported and are stated as
+  such in the specification.
+- R02 and R04 are addressed for the Linux x64 and Windows x64 preview. The package uses a strict
+  entry allowlist, includes upstream provenance/capabilities/license and ABI
+  evidence, requires the exact RID/path, verifies the native SHA-256 identity,
+  and rejects misplaced, duplicate, or corrupted native assets.
+- The R03 SDK issue is addressed by explicitly installing .NET 8 and .NET 10;
+  Linux x64 and Windows x64 now build and test the real pinned engine.
+- R05 is reflected in the roadmap by moving the first package-consumer and
+  recovery gate into Phase 1.
+- R17 remains an upgrade concern: file-format compatibility must be checked as
+  a separate upstream contract.
+- R18 is partially addressed by SourceLink, a checked public-API baseline, and
+  publishing automation. The preview is portable on Linux x64 and Windows x64;
+  additional RIDs remain intentionally unsupported.
+- R03, R06, and the core of R08 now have executable Linux x64 and Windows x64
+  evidence. The
+  native gate builds the pinned source and tests ABI layout, open, graph writes,
+  commit, rollback, rejected close with active children, finalizer cleanup,
+  single-writer rejection/recovery, close/reopen persistence, parameterized
+  queries, nested values, query diagnostics, and query/result ownership.
+  Fault-injected consuming-error paths remain open.
+
+The findings below remain the detailed design record. References to v0.10.0
+describe the evidence available at review time; the status above records what
+changed afterward.
+
 ## Assessment and scope
 
-The scaffold has a sensible boundary: a synchronous, independent .NET binding,
-with internal interop and explicit native ownership. Its documentation is clear
-that it cannot open a database yet. Keep those choices.
-
-There is no implemented database, transaction, value, query, or native loader to
-review for runtime correctness. The only managed test checks assembly identity;
-the integration test is an empty, permanently skipped placeholder. Findings below
-separate concrete scaffold/specification defects from proposed implementation
-contracts. They are recommendations, not claims that the contracts already exist.
+The scaffold established a sensible boundary: a synchronous, independent .NET
+binding with internal interop and explicit native ownership. A subsequent
+remediation pass implemented and tested database, transaction, query, result,
+and recursive-value ownership. The findings below remain design constraints for
+the still-unbound graph, retrieval, and stream surfaces.
 
 This review inspected source, project configuration, package verification, CI,
 all architecture documents, and the submitted product specification. It read the
 header directly from the pinned revision and verified the remote release tag.
-It did not build the native library or independently verify Zig implementation,
-Windows support, recovery, or performance. No runtime code was changed.
+The original review did not build the native library or independently verify Zig
+implementation, Windows support, recovery, or performance. The remediation pass
+has since produced Linux x64 and Windows x64 build and lifecycle evidence;
+macOS, crash-recovery, fault injection, and performance remain unverified.
 
 Priority: P1 must be addressed before the affected feature is implemented or
 released; P2 should be resolved while shaping the core API; P3 is a later improvement.
@@ -313,9 +348,8 @@ every analytical workload currently using DuckDB.
 
 ## Recommended implementation sequence
 
-1. Reconcile R01 against the pinned header; decide whether to retain v0.10.0 or
-   deliberately choose a newer immutable revision. Record supported features.
-2. Build the native library and ABI probe; establish allocator/parent lifetimes,
+1. Complete the ownership inventory against the archived v0.15.0 header.
+2. Build the pinned native library and ABI probe; establish allocator/parent lifetimes,
    close behavior, and transaction completion with focused executable tests.
 3. Deliver explicit transactions, typed values, one graph operation, and a
    parameterized query with detached result values and controlled disposal.

@@ -1,7 +1,39 @@
 {
+  "schemaVersion": 1,
   "repository": "https://github.com/jeffhajewski/latticedb",
-  "reference": "v0.10.0",
-  "commit": "bcf4c553411cb6758b4b1481f1ec0be5e4872af9",
+  "reference": "v0.15.0",
+  "commit": "9800159e22e200f2b6888c7c6be1810adb695506",
+  "version": "0.15.0",
   "zigVersion": "0.16.0",
-  "status": "pinned-not-vendored"
+  "zigToolchains": "native/zig-toolchains.json",
+  "license": "MIT",
+  "licenseFile": {
+    "path": "native/LICENSE.LatticeDB",
+    "length": 1070,
+    "sha256": "9da5f0a8ddfd1943298c80f3dbd090da064c8200a39deb954dc468cc0d77ea39"
+  },
+  "header": {
+    "path": "native/include/lattice.h",
+    "length": 36070,
+    "sha256": "07fcb3900435130ab239d01274b4ef714cfb0bda6041bcca0b439fcc768bee5e"
+  },
+  "patchSet": {
+    "schemaVersion": 1,
+    "id": "latticedb-v0.15.0-durable-recovery",
+    "path": "native/patches/latticedb-v0.15.0.json",
+    "sha256": "4aeb76b8be1a525a759ae6c2b40567acff2aa6b8731ecda3086cf27f9e018522"
+  },
+  "capabilities": "native/capabilities.json",
+  "supportedRuntimeIdentifiers": [
+    "linux-x64",
+    "win-x64"
+  ],
+  "candidateRuntimeIdentifiers": [
+    "linux-arm64",
+    "osx-x64",
+    "osx-arm64"
+  ],
+  "blockedRuntimeIdentifiers": {},
+  "buildCommand": "zig build shared -Doptimize=ReleaseFast",
+  "status": "linux-x64-and-win-x64-patched-build-abi-lifecycle-durability-verified"
 }

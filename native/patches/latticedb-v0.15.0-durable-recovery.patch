@@ -1,0 +1,175 @@
+diff --git a/src/storage/database.zig b/src/storage/database.zig
+index 713f7f0..3359f5a 100644
+--- a/src/storage/database.zig
++++ b/src/storage/database.zig
+@@ -1042,6 +1042,13 @@ pub const Database = struct {
+ 
+         if (is_new) {
+             try self.initNewTrees();
++
++            // A committed WAL record can only recover against a durable tree
++            // baseline. Persist newly allocated root pages before accepting
++            // transactions so a hard kill cannot leave the header referring
++            // to tree pages that never reached the database file.
++            self.buffer_pool.flushAll() catch return DatabaseError.IoError;
++            self.page_manager.sync() catch return DatabaseError.IoError;
+         } else {
+             try self.loadExistingTrees();
+         }
+diff --git a/src/storage/wal.zig b/src/storage/wal.zig
+index ebd2dab..d062094 100644
+--- a/src/storage/wal.zig
++++ b/src/storage/wal.zig
+@@ -425,27 +425,51 @@ pub const WalManager = struct {
+ 
+             var frame_buf: [MAX_FRAME_SIZE]u8 = undefined;
+             const frame = frame_buf[0..self.frame_size];
+-            const n = self.file.read(offset, frame) catch break;
+-            if (n != self.frame_size) break;
++            const n = self.file.read(offset, frame) catch return WalError.IoError;
++            if (n != self.frame_size) {
++                if (frame_num + 1 != self.header.frame_count) {
++                    return WalError.CorruptedFrame;
++                }
++
++                // A hard kill can leave only the physically incomplete final
++                // declared frame on disk. Remove it before publishing the
++                // repaired frame count so appends cannot retain a hole.
++                self.file.truncate(offset) catch return WalError.IoError;
++                self.header.frame_count = frame_num;
++                self.writeHeader() catch return WalError.IoError;
++                self.file.sync() catch return WalError.IoError;
++                break;
++            }
+ 
+             const header = std.mem.bytesAsValue(WalFrameHeader, frame[0..@sizeOf(WalFrameHeader)]);
+-            if (header.data_size > self.frameDataSize()) break;
++            if (header.frame_number != frame_num) {
++                return WalError.CorruptedFrame;
++            }
++            if (header.data_size > self.frameDataSize()) {
++                return WalError.CorruptedFrame;
++            }
+ 
+             // Validate checksum
+             const data = frame[@sizeOf(WalFrameHeader)..][0..header.data_size];
+             const expected = calculateChecksum(data);
+-            if (header.checksum != expected) break;
++            if (header.checksum != expected) {
++                return WalError.ChecksumMismatch;
++            }
+ 
+             // Find max LSN in this frame
+             var record_offset: usize = 0;
+             while (record_offset < header.data_size) {
+-                if (record_offset + @sizeOf(WalRecordHeader) > header.data_size) break;
++                if (record_offset + @sizeOf(WalRecordHeader) > header.data_size) {
++                    return WalError.CorruptedFrame;
++                }
+                 const rec_header = std.mem.bytesAsValue(
+                     WalRecordHeader,
+                     data[record_offset..][0..@sizeOf(WalRecordHeader)],
+                 );
+                 const record_size = @sizeOf(WalRecordHeader) + @as(usize, rec_header.payload_size);
+-                if (record_offset + record_size > header.data_size) break;
++                if (record_offset + record_size > header.data_size) {
++                    return WalError.CorruptedFrame;
++                }
+                 if (rec_header.lsn > max_lsn) {
+                     max_lsn = rec_header.lsn;
+                 }
+@@ -1023,6 +1047,94 @@ test "wal reopen and continue" {
+     }
+ }
+ 
++test "wal recovers an incomplete final declared frame without a hole" {
++    const allocator = std.testing.allocator;
++
++    var posix_vfs = vfs.PosixVfs.init(allocator);
++    const vfs_impl = posix_vfs.vfs();
++
++    const path = "/tmp/lattice_wal_test_truncated_tail.wal";
++    vfs_impl.delete(path) catch {};
++
++    var uuid: [16]u8 = undefined;
++    @import("compat").randomBytes(&uuid);
++
++    {
++        var wal = try WalManager.init(allocator, vfs_impl, path, uuid);
++        _ = try wal.appendRecord(.txn_begin, 1, 0, &[_]u8{});
++        try wal.sync();
++        _ = try wal.appendRecord(.insert, 1, 1, "committed");
++        try wal.sync();
++        wal.deinit();
++    }
++
++    const torn_size = WAL_HEADER_SIZE + @as(u64, FRAME_SIZE) + @as(u64, FRAME_SIZE / 2);
++    {
++        var file = try vfs_impl.open(path, .{ .read = true, .write = true });
++        try file.truncate(torn_size);
++        file.close();
++    }
++
++    {
++        var wal = try WalManager.init(allocator, vfs_impl, path, uuid);
++        try std.testing.expectEqual(@as(u64, 1), wal.header.frame_count);
++        _ = try wal.appendRecord(.txn_commit, 1, 0, &[_]u8{});
++        try wal.sync();
++        try std.testing.expectEqual(
++            WAL_HEADER_SIZE + @as(u64, FRAME_SIZE) * 2,
++            try wal.file.size(),
++        );
++        wal.deinit();
++    }
++
++    {
++        var wal = try WalManager.init(allocator, vfs_impl, path, uuid);
++        defer {
++            wal.deinit();
++            vfs_impl.delete(path) catch {};
++        }
++        try std.testing.expectEqual(@as(u64, 2), wal.header.frame_count);
++        var iter = wal.iterate(1);
++        var buf: [256]u8 = undefined;
++        var count: u64 = 0;
++        while (try iter.next(&buf)) |_| count += 1;
++        try std.testing.expectEqual(@as(u64, 2), count);
++    }
++}
++
++test "wal does not hide a checksum failure in a complete frame" {
++    const allocator = std.testing.allocator;
++
++    var posix_vfs = vfs.PosixVfs.init(allocator);
++    const vfs_impl = posix_vfs.vfs();
++
++    const path = "/tmp/lattice_wal_test_mid_log_checksum.wal";
++    vfs_impl.delete(path) catch {};
++
++    var uuid: [16]u8 = undefined;
++    @import("compat").randomBytes(&uuid);
++
++    {
++        var wal = try WalManager.init(allocator, vfs_impl, path, uuid);
++        _ = try wal.appendRecord(.txn_begin, 1, 0, &[_]u8{});
++        try wal.sync();
++        _ = try wal.appendRecord(.insert, 1, 1, "committed");
++        try wal.sync();
++        wal.deinit();
++    }
++
++    {
++        var file = try vfs_impl.open(path, .{ .read = true, .write = true });
++        var corrupted = [_]u8{0xff};
++        try file.write(WAL_HEADER_SIZE + @sizeOf(WalFrameHeader), &corrupted);
++        file.close();
++    }
++
++    const result = WalManager.init(allocator, vfs_impl, path, uuid);
++    try std.testing.expectError(WalError.ChecksumMismatch, result);
++    vfs_impl.delete(path) catch {};
++}
++
+ test "wal uuid mismatch" {
+     const allocator = std.testing.allocator;
+ 

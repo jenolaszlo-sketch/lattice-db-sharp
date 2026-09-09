@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "upstreamVersion": "0.15.0",
+  "upstreamCommit": "9800159e22e200f2b6888c7c6be1810adb695506",
+  "features": {
+    "database.open": {
+      "status": "supported",
+      "symbol": "lattice_open_v4",
+      "notes": "Uses lattice_open_options_v4, including file locking."
+    },
+    "database.close": {
+      "status": "supported",
+      "symbol": "lattice_close",
+      "notes": "Close outcome has consuming and non-consuming error cases."
+    },
+    "database.serialize": {
+      "status": "supported",
+      "symbol": "lattice_serialize"
+    },
+    "database.deserializeCopy": {
+      "status": "supported",
+      "symbol": "lattice_deserialize"
+    },
+    "database.deserializeBorrowed": {
+      "status": "deferred",
+      "symbol": "lattice_deserialize_borrowed",
+      "notes": "Requires caller memory to outlive the database."
+    },
+    "transaction.readWrite": {
+      "status": "supported",
+      "symbol": "lattice_begin"
+    },
+    "node.crud": {
+      "status": "supported",
+      "symbol": "lattice_node_create"
+    },
+    "node.removeProperty": {
+      "status": "unsupported",
+      "missingSymbol": "lattice_node_remove_property",
+      "notes": "May be exposed later through verified parameterized Cypher."
+    },
+    "edge.create": {
+      "status": "supported",
+      "symbol": "lattice_edge_create"
+    },
+    "edge.deleteById": {
+      "status": "unsupported",
+      "missingSymbol": "lattice_edge_delete_by_id",
+      "notes": "The C API deletes by source, target, and type."
+    },
+    "edge.deleteByEndpointsAndType": {
+      "status": "supported",
+      "symbol": "lattice_edge_delete"
+    },
+    "value.recursiveListMap": {
+      "status": "supported",
+      "symbol": "lattice_value_free"
+    },
+    "query.prepared": {
+      "status": "supported",
+      "symbol": "lattice_query_prepare"
+    },
+    "query.writeClassification": {
+      "status": "supported",
+      "symbol": "lattice_query_writes"
+    },
+    "query.diagnostics": {
+      "status": "supported",
+      "symbol": "lattice_query_last_error_stage"
+    },
+    "vector.search": {
+      "status": "supported",
+      "symbol": "lattice_vector_search"
+    },
+    "fullText.nodePropertyIndex": {
+      "status": "supported",
+      "symbol": "lattice_node_fts_index_create"
+    },
+    "fullText.edgePropertyIndex": {
+      "status": "supported",
+      "symbol": "lattice_edge_fts_index_create"
+    },
+    "propertyIndex.node": {
+      "status": "supported",
+      "symbol": "lattice_node_property_index_create"
+    },
+    "propertyIndex.edge": {
+      "status": "supported",
+      "symbol": "lattice_edge_property_index_create"
+    },
+    "streams.durable": {
+      "status": "supported",
+      "symbol": "lattice_stream_publish"
+    },
+    "platform.windowsX64": {
+      "status": "supported",
+      "notes": "The pinned base plus the declared durable-recovery patch builds and packages as runtimes/win-x64/native/lattice.dll. All 22 expanded native tests pass, including hard-kill recovery, cross-process locking, and Unicode long paths."
+    }
+  }
+}

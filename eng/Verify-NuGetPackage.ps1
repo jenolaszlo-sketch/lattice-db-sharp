@@ -107,8 +107,11 @@ try {
         'build/LatticeDbSharp/native/linux-x64/asset.json',
         'build/LatticeDbSharp/native/win-x64/abi.json',
         'build/LatticeDbSharp/native/win-x64/asset.json',
+        'build/LatticeDbSharp/native/osx-arm64/abi.json',
+        'build/LatticeDbSharp/native/osx-arm64/asset.json',
         'runtimes/linux-x64/native/liblattice.so',
         'runtimes/win-x64/native/lattice.dll',
+        'runtimes/osx-arm64/native/liblattice.dylib',
         'lib/net8.0/LatticeDbSharp.dll',
         'lib/net8.0/LatticeDbSharp.xml'
     )) {
@@ -135,8 +138,11 @@ try {
         'build/LatticeDbSharp/native/linux-x64/asset.json',
         'build/LatticeDbSharp/native/win-x64/abi.json',
         'build/LatticeDbSharp/native/win-x64/asset.json',
+        'build/LatticeDbSharp/native/osx-arm64/abi.json',
+        'build/LatticeDbSharp/native/osx-arm64/asset.json',
         'runtimes/linux-x64/native/liblattice.so',
         'runtimes/win-x64/native/lattice.dll',
+        'runtimes/osx-arm64/native/liblattice.dylib',
         'package/services/metadata/core-properties/nuget.psmdcp',
         '[Content_Types].xml'
     )
@@ -160,15 +166,17 @@ try {
     $native = @($archive.Entries | Where-Object {
         $_.FullName -cmatch '(?i)(^|/)(lattice\.dll|liblattice\.so(?:\.[0-9]+)*|liblattice\.dylib|liblattice\.a)$'
     })
-    if ($native.Count -ne 2 -or
+    if ($native.Count -ne 3 -or
         ($native.FullName -notcontains 'runtimes/linux-x64/native/liblattice.so') -or
-        ($native.FullName -notcontains 'runtimes/win-x64/native/lattice.dll')) {
-        throw "Package must contain exactly the verified Linux x64 and Windows x64 native assets; found: $($native.FullName -join ', ')"
+        ($native.FullName -notcontains 'runtimes/win-x64/native/lattice.dll') -or
+        ($native.FullName -notcontains 'runtimes/osx-arm64/native/liblattice.dylib')) {
+        throw "Package must contain exactly the verified Linux x64, Windows x64, and macOS ARM64 native assets; found: $($native.FullName -join ', ')"
     }
 
     foreach ($contract in @(
         @{ RuntimeIdentifier = 'linux-x64'; FileName = 'liblattice.so' },
-        @{ RuntimeIdentifier = 'win-x64'; FileName = 'lattice.dll' }
+        @{ RuntimeIdentifier = 'win-x64'; FileName = 'lattice.dll' },
+        @{ RuntimeIdentifier = 'osx-arm64'; FileName = 'liblattice.dylib' }
     )) {
         $assetPath = "build/LatticeDbSharp/native/$($contract.RuntimeIdentifier)/asset.json"
         $assetEntries = @($archive.Entries | Where-Object { $_.FullName -ceq $assetPath })

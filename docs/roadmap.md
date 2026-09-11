@@ -25,7 +25,8 @@ code-graph and retrieval quality enough to replace or complement DuckDB.
   and freed native type, including consuming error outcomes.
 - [x] Reproduce the shared build with hash-pinned Zig 0.16.0 on Linux x64;
   verify exports, the v4-options ABI, and managed loading against the real engine.
-- [ ] Reproduce and execute the equivalent native gate on macOS ARM64.
+- [x] Reproduce and execute the equivalent native gate on macOS ARM64
+  (native macOS runner build, ad-hoc signing, ABI probe, staged dylib).
 - [x] Build and execute the equivalent native gate on Windows x64 from the
   pinned base plus the disclosed patch set; stage `lattice.dll` with ABI,
   patch, and export evidence.
@@ -44,16 +45,17 @@ code-graph and retrieval quality enough to replace or complement DuckDB.
   cleanup on Linux x64.
 - [x] Prove parameterized Cypher, nested list/map round trips, structured query
   diagnostics, deterministic result cleanup, and scoped transaction helpers.
-- [x] Enable native integration tests in the verified Linux x64 and Windows x64
-  gates.
+- [x] Enable native integration tests in the verified Linux x64, Windows x64,
+  and macOS ARM64 gates.
 
 - [x] Resolve the durable-preview blocker with a minimal, hash-verified native
   patch: persist new tree roots before transactions can commit, repair only an
   incomplete final WAL frame, and continue rejecting checksum or mid-log
-  corruption. All 22 expanded native tests pass on Linux x64 and Windows x64.
+  corruption. All 22 expanded native tests pass on Linux x64, Windows x64, and
+  macOS ARM64.
 
-Exit: the pinned ABI is loadable and ownership-safe on Linux x64 and Windows
-x64; macOS ARM64 remains the next native gate.
+Exit: the pinned ABI is loadable and ownership-safe on Linux x64, Windows
+x64, and macOS ARM64.
 
 ## Phase 1 — core binding (0.1.0)
 

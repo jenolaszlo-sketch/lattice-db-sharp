@@ -35,13 +35,12 @@ P/Invoke, pointers, opaque native handles, or manual memory ownership:
 
 ## Status
 
-The repository is completing **Phase 0: native feasibility**. In addition to
-native diagnostics, the first deliberately small public lifecycle slice now
-opens file or memory databases, creates explicit read/write transactions, and
-proves node/edge creation, commit, rollback, single-writer behavior, finalizer
-cleanup, close/reopen persistence, cross-process locking, and hard-kill recovery
-on Linux x64, Windows x64, and macOS ARM64. The first-preview release gates are
-complete.
+**0.1.0 is stable.** The binding opens file or memory databases, runs explicit
+read/write transactions, and covers node/edge creation, edge deletion,
+properties, detached traversal, commit, rollback, single-writer behavior,
+finalizer cleanup, close/reopen persistence, cross-process locking, and
+hard-kill recovery on Linux x64, Windows x64, and macOS ARM64. The managed
+assembly is trim-clean and NativeAOT-compatible, proven by a gated smoke test.
 
 The upstream baseline is pinned to LatticeDB v0.15.0, commit
 9800159e22e200f2b6888c7c6be1810adb695506. Its exact public header and a
@@ -49,7 +48,7 @@ machine-readable capability matrix are archived and hash-verified in CI. Native
 assets are built through a pinned, traceable process from that exact base plus a small, disclosed,
 hash-verified durable-recovery patch carried in this repository. The staging and
 package validation carry verified Linux x64, Windows x64, and macOS ARM64
-runtimes with their build, patch, and ABI evidence. All 22 expanded native
+runtimes with their build, patch, and ABI evidence. All 26 expanded native
 tests pass on each platform. Other runtime identifiers fail with an actionable
 diagnostic rather than loading an arbitrary system library. The macOS asset is
 built natively on the macOS CI runner and ad-hoc code-signed so its pages map
@@ -67,12 +66,12 @@ framework. Hetu may later evaluate it against the current DuckDB-backed design,
 but replacement is a benchmark and capability decision after the wrapper's
 retrieval features are proven.
 
-## Intended API
+## API
 
-The first useful release will provide synchronous database lifecycle,
-transactions, graph values and identifiers, node/edge/property operations,
-Cypher preparation and execution, parameter binding, result lifetimes, and
-structured native/query errors. The current preview also exposes the pinned
+The 0.1.0 surface provides synchronous database lifecycle, transactions, graph
+values and identifiers, node/edge/property operations, detached edge
+traversal, Cypher preparation and execution, parameter binding, result
+lifetimes, and structured native/query errors. It also exposes the pinned
 engine's single configured vector write per node; vector search, full-text,
 index, and stream surfaces follow only after their ownership models are
 verified.
@@ -86,10 +85,10 @@ and generic database abstractions are non-goals.
 
 ## Quick start
 
-The first preview contains verified Linux x64, Windows x64, and macOS ARM64 native assets:
+The package contains verified Linux x64, Windows x64, and macOS ARM64 native assets:
 
 ```shell
-dotnet add package LatticeDbSharp --prerelease
+dotnet add package LatticeDbSharp
 ```
 
 ```csharp
@@ -108,6 +107,8 @@ using (var write = database.BeginWriteTransaction())
 
 using var read = database.BeginReadTransaction();
 Console.WriteLine(read.NodeExists(alice));
+foreach (var edge in read.GetOutgoingEdges(alice))
+    Console.WriteLine($"{edge.Type} -> {edge.Target.Value}");
 read.Commit();
 ```
 
@@ -129,8 +130,10 @@ The managed scaffold requires the .NET 10 SDK and targets .NET 8:
 Native integration tests are skipped by default for managed-only development.
 The Linux x64, Windows x64, and macOS ARM64 CI gates build the exact pinned
 base plus the verified patch set, check ABI evidence, and enable native tests
-against the generated libraries. Additional platforms will only be advertised
-after their own lifecycle, recovery, locking, and cleanup gates pass.
+against the generated libraries. A NativeAOT smoke test publishes and runs a
+trimmed binary against the staged engine on Linux. Additional platforms will
+only be advertised after their own lifecycle, recovery, locking, and cleanup
+gates pass.
 
 ## Documentation
 

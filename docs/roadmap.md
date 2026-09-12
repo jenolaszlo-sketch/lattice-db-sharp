@@ -104,6 +104,43 @@ executable tests without public pointers or manual native ownership.
 Exit: graph traversal, vector similarity, and text retrieval can be combined
 through the wrapper with verified ownership and error behavior.
 
+## Phase 2 — follow-ups (0.2.x)
+
+### Deliberately unbound native surface
+
+These stay out of the wrapper unless a concrete consumer requires them:
+
+- Admin `lattice_edge_scan` (the header marks it unsuitable for hot-path expansion).
+- `lattice_deserialize_borrowed` (pinning caller memory for a database lifetime is GC-hostile; use copying `Deserialize`).
+- `lattice_query_cache_clear` / `lattice_query_cache_stats` (diagnostic admin surface, no consumer yet).
+- `lattice_node_remove_property` does not exist in the pinned header; node property removal is Cypher-only by engine design.
+- The native HTTP embedding client (`lattice_embedding_client_*`) stays unbound: model calls belong behind the host's model gateway (Baize in Penghou), which owns credentials, retry, usage, and provenance. Binding it would duplicate that governance inside the database wrapper.
+
+### Embedding provider package
+
+Ship text-to-vector convenience in a separate `LatticeDbSharp.Extensions.AI`-style
+package, never in core. Core keeps only vector storage and search; the package
+adapts embedding stacks without taking a dependency on any of them:
+
+- [ ] Investigate `Microsoft.Extensions.AI` first: adopt `IEmbeddingGenerator<string,
+  Embedding<float>>` if it fits (note its batch shape needs a single-text
+  adapter); introduce a minimal local interface only if it does not.
+- [ ] Transaction-scoped helpers on the real API shapes (`LatticeTransaction`
+  owns `SetVector`; results are `LatticeVectorHit`): embed-and-store plus
+  embed-query-then-top-k, with cancellation flowing into the provider only
+  (native vector ops follow current ABI governability, documented as such).
+- [ ] Dimension handling without invented checks: no managed accessor exists
+  for configured dimensions, so rely on native rejection and document it.
+- [ ] Include a `LatticeHashEmbeddingProvider` over the already-bound
+  `lattice_hash_embed` as the no-dependency offline example, documented as
+  lexical similarity rather than semantic evidence.
+- [ ] Provider errors propagate unchanged (never converted to database
+  errors); no provenance persistence in the wrapper.
+- [ ] Integration tests with fake providers (native engine required, so these
+  live in the integration suite): single invocation, vector passthrough,
+  cancellation forwarding, dimension errors, top-k forwarding, metadata
+  neutrality, and no native-HTTP-client use.
+
 ## Phase 3 — durable events (0.3.0)
 
 - [ ] Named stream publication/read, sequence numbers, offsets, and trimming.

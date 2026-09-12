@@ -8,5 +8,6 @@
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/LatticeDbSharp.QuickStart/LatticeDbSharp.QuickStart.csproj" />
+    <Project Path="samples/LatticeDbSharp.AotSmoke/LatticeDbSharp.AotSmoke.csproj" />
   </Folder>
 </Solution>

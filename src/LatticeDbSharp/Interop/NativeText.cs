@@ -37,6 +37,35 @@ internal static class NativeText
         return Utf8.GetBytes(value);
     }
 
+    internal static string Decode(nint pointer, int length, string parameterName)
+    {
+        if (pointer == nint.Zero)
+        {
+            throw new InvalidDataException($"Native {parameterName} pointer was null.");
+        }
+
+        if (length < 0 || length > NativeValueLimits.MaxNativeTextBytes)
+        {
+            throw new InvalidDataException($"Native {parameterName} length was out of range.");
+        }
+
+        if (length == 0)
+        {
+            return string.Empty;
+        }
+
+        var bytes = new byte[length];
+        Marshal.Copy(pointer, bytes, 0, length);
+        try
+        {
+            return Utf8.GetString(bytes);
+        }
+        catch (DecoderFallbackException exception)
+        {
+            throw new InvalidDataException("Native text contained invalid UTF-8.", exception);
+        }
+    }
+
     internal static string? DecodeNullTerminated(nint pointer)
     {
         if (pointer == nint.Zero)

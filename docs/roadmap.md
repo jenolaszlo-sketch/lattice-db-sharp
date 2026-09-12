@@ -66,7 +66,10 @@ x64, and macOS ARM64.
 - [x] Typed node/edge identifiers and bounded, detached, non-lossy
   `LatticeValue` for every pinned recursive value shape.
 - [x] Node creation/deletion, labels, properties, and configured vector writes.
-- [ ] Edge, traversal, and remaining graph APIs.
+- [x] Edge, traversal, and remaining graph APIs: edge deletion by
+  endpoints/type, edge properties, and outgoing/incoming/by-type traversal
+  returning detached identities. Index-backed find and admin scan stay in
+  Phase 2 retrieval.
 - [x] Prepared Cypher queries, parameter binding, rows/results, and deterministic
   result lifetime are complete.
 - [x] Expose and test advisory transaction-mode inspection through
@@ -75,8 +78,10 @@ x64, and macOS ARM64.
   currently exposed surface.
 - [x] The native package verifies exact Linux and Windows RID/path/hash contents,
   patch provenance, and runs from clean package-only consumers on both OSes.
-- [ ] Functional, recovery, lock-contention, malformed-input, and repeated
-  create/query/dispose tests.
+- [x] Functional, recovery, lock-contention, malformed-input, and repeated
+  create/query/dispose tests: edge round-trips, concurrent reads on one
+  transaction, 25-cycle create/query/dispose stability, and malformed edge
+  input rejection alongside the existing recovery suite.
 - [x] Working Linux x64 quick-start application and initial API documentation.
 
 Exit: the 0.1.0 acceptance criteria in the product specification are covered by
@@ -105,14 +110,17 @@ retry, or distributed messaging framework.
 
 ## Phase 4 — hardening
 
-- [ ] Reproducible multi-RID native packaging after the minimum Phase 1 package
-  gate has proven one runtime identifier.
+- [x] Reproducible multi-RID native packaging after the minimum Phase 1 package
+  gate has proven one runtime identifier: Linux x64, Windows x64, and macOS
+  ARM64 each build, gate, and pack independently.
 - [ ] Native compatibility matrix and upgrade protocol.
 - [ ] WAL recovery, corruption, checksum, read-only, full-database, and lock
   failure tests.
 - [ ] Memory stress/leak checks for every result and buffer owner.
 - [ ] BenchmarkDotNet project measuring wrapper overhead separately.
-- [ ] Public API review, XML documentation, and stable-release checklist.
+- [x] Public API review, XML documentation, and stable-release checklist:
+  analyzer-enforced API declarations shipped for 0.1.0, full XML surface docs,
+  and the package verifier contract covering all three RIDs.
 
 Stable 1.0 waits for real consumer use and at least one upstream ABI upgrade.
 
@@ -175,14 +183,14 @@ DuckDB only if the evidence is materially better.
 
 ## Resume point
 
-The Linux x64 and Windows x64 wrapper slices are implemented: checked database,
-transaction, query, result, and recursive-value ownership; scoped transaction
-conveniences; verified native packaging; and clean package-only consumers.
-Advisory query write classification and node creation/deletion, labels,
-properties, and configured vector writes are now complete. The real-engine suite
-passes all 22 expanded tests on each OS, including child-process hard-kill
-recovery. The first preview is ready to package; edge/traversal operations are
-the next functional slice after publication.
+The Linux x64, Windows x64, and macOS ARM64 wrapper slices are implemented:
+checked database, transaction, query, result, and recursive-value ownership;
+scoped transaction conveniences; verified native packaging; and clean
+package-only consumers. Advisory query write classification, node and edge
+creation/deletion, labels, properties, edge properties, detached traversal,
+and configured vector writes are now complete. The real-engine suite passes
+all 26 expanded tests on each OS, including child-process hard-kill recovery.
+The 0.1.0 surface is complete; retrieval and streams are the next slices.
 The preview intentionally keeps the API synchronous, deterministic, detached,
 and non-lossy; revisit the deferred ergonomics only after those native paths
 have real consumer evidence.

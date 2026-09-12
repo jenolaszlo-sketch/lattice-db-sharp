@@ -162,8 +162,30 @@ jobs:
           path: native/staging/osx-arm64/
           if-no-files-found: error
 
+  aot-smoke:
+    needs: native-linux-x64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - uses: actions/download-artifact@v6
+        with:
+          name: native-linux-x64-evidence
+          path: native/staging/linux-x64
+      - name: Publish NativeAOT smoke test
+        run: dotnet publish samples/LatticeDbSharp.AotSmoke/LatticeDbSharp.AotSmoke.csproj -c Release -r linux-x64 --self-contained
+      - name: Run NativeAOT smoke test
+        env:
+          LATTICEDBSHARP_NATIVE_LIBRARY: ${{ github.workspace }}/native/staging/linux-x64/liblattice.so
+        run: ./samples/LatticeDbSharp.AotSmoke/bin/Release/net8.0/linux-x64/publish/LatticeDbSharp.AotSmoke
+
   pack:
-    needs: [native-linux-x64, native-windows-x64, native-osx-arm64]
+    needs: [native-linux-x64, native-windows-x64, native-osx-arm64, aot-smoke]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

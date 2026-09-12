@@ -1,1 +1,180 @@
 #nullable enable
+LatticeDbSharp.LatticeDatabase
+LatticeDbSharp.LatticeDatabase.BeginReadTransaction() -> LatticeDbSharp.LatticeTransaction!
+LatticeDbSharp.LatticeDatabase.BeginWriteTransaction() -> LatticeDbSharp.LatticeTransaction!
+LatticeDbSharp.LatticeDatabase.Close() -> void
+LatticeDbSharp.LatticeDatabase.Dispose() -> void
+LatticeDbSharp.LatticeDatabase.ExecuteRead(System.Action<LatticeDbSharp.LatticeTransaction!>! action) -> void
+LatticeDbSharp.LatticeDatabase.ExecuteRead<TResult>(System.Func<LatticeDbSharp.LatticeTransaction!, TResult>! action) -> TResult
+LatticeDbSharp.LatticeDatabase.ExecuteWrite(System.Action<LatticeDbSharp.LatticeTransaction!>! action) -> void
+LatticeDbSharp.LatticeDatabase.ExecuteWrite<TResult>(System.Func<LatticeDbSharp.LatticeTransaction!, TResult>! action) -> TResult
+LatticeDbSharp.LatticeDatabase.IsClosed.get -> bool
+LatticeDbSharp.LatticeDatabase.Path.get -> string!
+LatticeDbSharp.LatticeDatabase.Prepare(string! cypher) -> LatticeDbSharp.LatticeQuery!
+LatticeDbSharp.LatticeDatabaseOptions
+LatticeDbSharp.LatticeDatabaseOptions.CacheSizeMb.get -> uint
+LatticeDbSharp.LatticeDatabaseOptions.CacheSizeMb.init -> void
+LatticeDbSharp.LatticeDatabaseOptions.Create.get -> bool
+LatticeDbSharp.LatticeDatabaseOptions.Create.init -> void
+LatticeDbSharp.LatticeDatabaseOptions.EnableAdjacencyCache.get -> bool
+LatticeDbSharp.LatticeDatabaseOptions.EnableAdjacencyCache.init -> void
+LatticeDbSharp.LatticeDatabaseOptions.EnableVector.get -> bool
+LatticeDbSharp.LatticeDatabaseOptions.EnableVector.init -> void
+LatticeDbSharp.LatticeDatabaseOptions.EnableWal.get -> bool
+LatticeDbSharp.LatticeDatabaseOptions.EnableWal.init -> void
+LatticeDbSharp.LatticeDatabaseOptions.LatticeDatabaseOptions() -> void
+LatticeDbSharp.LatticeDatabaseOptions.Lock.get -> bool
+LatticeDbSharp.LatticeDatabaseOptions.Lock.init -> void
+LatticeDbSharp.LatticeDatabaseOptions.PageSize.get -> uint
+LatticeDbSharp.LatticeDatabaseOptions.PageSize.init -> void
+LatticeDbSharp.LatticeDatabaseOptions.ReadOnly.get -> bool
+LatticeDbSharp.LatticeDatabaseOptions.ReadOnly.init -> void
+LatticeDbSharp.LatticeDatabaseOptions.VectorDimensions.get -> ushort
+LatticeDbSharp.LatticeDatabaseOptions.VectorDimensions.init -> void
+LatticeDbSharp.LatticeEdgeId
+LatticeDbSharp.LatticeEdgeId.Deconstruct(out ulong Value) -> void
+LatticeDbSharp.LatticeEdgeId.Equals(LatticeDbSharp.LatticeEdgeId other) -> bool
+LatticeDbSharp.LatticeEdgeId.LatticeEdgeId() -> void
+LatticeDbSharp.LatticeEdgeId.LatticeEdgeId(ulong Value) -> void
+LatticeDbSharp.LatticeEdgeId.Value.get -> ulong
+LatticeDbSharp.LatticeEdgeId.Value.init -> void
+LatticeDbSharp.LatticeException
+LatticeDbSharp.LatticeException.NativeErrorCode.get -> int
+LatticeDbSharp.LatticeException.Operation.get -> string!
+LatticeDbSharp.LatticeQuery
+LatticeDbSharp.LatticeQuery.Bind(string! name, LatticeDbSharp.LatticeValue value) -> void
+LatticeDbSharp.LatticeQuery.Dispose() -> void
+LatticeDbSharp.LatticeQuery.Execute(LatticeDbSharp.LatticeTransaction! transaction) -> LatticeDbSharp.LatticeQueryResult!
+LatticeDbSharp.LatticeQuery.ExecuteAll(LatticeDbSharp.LatticeTransaction! transaction) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeRow!>!
+LatticeDbSharp.LatticeQuery.MayWrite.get -> bool
+LatticeDbSharp.LatticeQueryException
+LatticeDbSharp.LatticeQueryException.Column.get -> int?
+LatticeDbSharp.LatticeQueryException.Length.get -> int?
+LatticeDbSharp.LatticeQueryException.Line.get -> int?
+LatticeDbSharp.LatticeQueryException.QueryErrorCode.get -> string?
+LatticeDbSharp.LatticeQueryException.Stage.get -> LatticeDbSharp.LatticeQueryStage
+LatticeDbSharp.LatticeQueryResult
+LatticeDbSharp.LatticeQueryResult.Columns.get -> System.Collections.Generic.IReadOnlyList<string!>!
+LatticeDbSharp.LatticeQueryResult.Current.get -> LatticeDbSharp.LatticeRow!
+LatticeDbSharp.LatticeQueryResult.Dispose() -> void
+LatticeDbSharp.LatticeQueryResult.MoveNext() -> bool
+LatticeDbSharp.LatticeQueryResult.ReadAll() -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeRow!>!
+LatticeDbSharp.LatticeQueryStage
+LatticeDbSharp.LatticeQueryStage.Execution = 4 -> LatticeDbSharp.LatticeQueryStage
+LatticeDbSharp.LatticeQueryStage.None = 0 -> LatticeDbSharp.LatticeQueryStage
+LatticeDbSharp.LatticeQueryStage.Parse = 1 -> LatticeDbSharp.LatticeQueryStage
+LatticeDbSharp.LatticeQueryStage.Plan = 3 -> LatticeDbSharp.LatticeQueryStage
+LatticeDbSharp.LatticeQueryStage.Semantic = 2 -> LatticeDbSharp.LatticeQueryStage
+LatticeDbSharp.LatticeRow
+LatticeDbSharp.LatticeRow.Count.get -> int
+LatticeDbSharp.LatticeRow.GetName(int ordinal) -> string!
+LatticeDbSharp.LatticeRow.GetValue(int ordinal) -> LatticeDbSharp.LatticeValue
+LatticeDbSharp.LatticeRow.TryGetOrdinal(string! name, out int ordinal) -> bool
+LatticeDbSharp.LatticeRow.this[int ordinal].get -> LatticeDbSharp.LatticeValue
+LatticeDbSharp.LatticeRow.this[string! name].get -> LatticeDbSharp.LatticeValue
+LatticeDbSharp.LatticeNative
+LatticeDbSharp.LatticeNativeCompatibilityException
+LatticeDbSharp.LatticeNativeException
+LatticeDbSharp.LatticeNativeLoadException
+LatticeDbSharp.LatticeNodeId
+LatticeDbSharp.LatticeNodeId.Deconstruct(out ulong Value) -> void
+LatticeDbSharp.LatticeNodeId.Equals(LatticeDbSharp.LatticeNodeId other) -> bool
+LatticeDbSharp.LatticeNodeId.LatticeNodeId() -> void
+LatticeDbSharp.LatticeNodeId.LatticeNodeId(ulong Value) -> void
+LatticeDbSharp.LatticeNodeId.Value.get -> ulong
+LatticeDbSharp.LatticeNodeId.Value.init -> void
+LatticeDbSharp.LatticeTransaction
+LatticeDbSharp.LatticeTransaction.AddLabel(LatticeDbSharp.LatticeNodeId nodeId, string! label) -> void
+LatticeDbSharp.LatticeTransaction.Commit() -> void
+LatticeDbSharp.LatticeTransaction.CreateEdge(LatticeDbSharp.LatticeNodeId source, LatticeDbSharp.LatticeNodeId target, string! edgeType) -> LatticeDbSharp.LatticeEdgeId
+LatticeDbSharp.LatticeTransaction.CreateNode(string? label = null) -> LatticeDbSharp.LatticeNodeId
+LatticeDbSharp.LatticeTransaction.DeleteNode(LatticeDbSharp.LatticeNodeId nodeId) -> void
+LatticeDbSharp.LatticeTransaction.Dispose() -> void
+LatticeDbSharp.LatticeTransaction.GetLabels(LatticeDbSharp.LatticeNodeId nodeId) -> System.Collections.Generic.IReadOnlyList<string!>!
+LatticeDbSharp.LatticeTransaction.GetProperty(LatticeDbSharp.LatticeNodeId nodeId, string! key) -> LatticeDbSharp.LatticeValue
+LatticeDbSharp.LatticeTransaction.IsCompleted.get -> bool
+LatticeDbSharp.LatticeTransaction.Mode.get -> LatticeDbSharp.LatticeTransactionMode
+LatticeDbSharp.LatticeTransaction.NodeExists(LatticeDbSharp.LatticeNodeId nodeId) -> bool
+LatticeDbSharp.LatticeTransaction.RemoveLabel(LatticeDbSharp.LatticeNodeId nodeId, string! label) -> void
+LatticeDbSharp.LatticeTransaction.Rollback() -> void
+LatticeDbSharp.LatticeTransaction.SetProperty(LatticeDbSharp.LatticeNodeId nodeId, string! key, LatticeDbSharp.LatticeValue value) -> void
+LatticeDbSharp.LatticeTransaction.SetVector(LatticeDbSharp.LatticeNodeId nodeId, System.ReadOnlyMemory<float> vector) -> void
+LatticeDbSharp.LatticeTransaction.TryGetProperty(LatticeDbSharp.LatticeNodeId nodeId, string! key, out LatticeDbSharp.LatticeValue value) -> bool
+LatticeDbSharp.LatticeTransactionMode
+LatticeDbSharp.LatticeTransactionMode.ReadOnly = 0 -> LatticeDbSharp.LatticeTransactionMode
+LatticeDbSharp.LatticeTransactionMode.ReadWrite = 1 -> LatticeDbSharp.LatticeTransactionMode
+LatticeDbSharp.LatticeValue
+LatticeDbSharp.LatticeValue.LatticeValue() -> void
+LatticeDbSharp.LatticeValue.AsBoolean() -> bool
+LatticeDbSharp.LatticeValue.AsBytes() -> System.ReadOnlyMemory<byte>
+LatticeDbSharp.LatticeValue.AsDouble() -> double
+LatticeDbSharp.LatticeValue.AsInt64() -> long
+LatticeDbSharp.LatticeValue.AsList() -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeValue>!
+LatticeDbSharp.LatticeValue.AsMap() -> System.Collections.Generic.IReadOnlyDictionary<string!, LatticeDbSharp.LatticeValue>!
+LatticeDbSharp.LatticeValue.AsString() -> string!
+LatticeDbSharp.LatticeValue.AsVector() -> System.ReadOnlyMemory<float>
+static LatticeDbSharp.LatticeValue.From(byte[]! value) -> LatticeDbSharp.LatticeValue
+static LatticeDbSharp.LatticeValue.From(bool value) -> LatticeDbSharp.LatticeValue
+static LatticeDbSharp.LatticeValue.From(double value) -> LatticeDbSharp.LatticeValue
+static LatticeDbSharp.LatticeValue.From(long value) -> LatticeDbSharp.LatticeValue
+static LatticeDbSharp.LatticeValue.From(System.Collections.Generic.IReadOnlyDictionary<string!, LatticeDbSharp.LatticeValue>! value) -> LatticeDbSharp.LatticeValue
+static LatticeDbSharp.LatticeValue.From(System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeValue>! value) -> LatticeDbSharp.LatticeValue
+static LatticeDbSharp.LatticeValue.From(System.ReadOnlyMemory<byte> value) -> LatticeDbSharp.LatticeValue
+static LatticeDbSharp.LatticeValue.From(System.ReadOnlyMemory<float> value) -> LatticeDbSharp.LatticeValue
+static LatticeDbSharp.LatticeValue.From(string! value) -> LatticeDbSharp.LatticeValue
+LatticeDbSharp.LatticeValue.Type.get -> LatticeDbSharp.LatticeValueType
+static LatticeDbSharp.LatticeValue.Null.get -> LatticeDbSharp.LatticeValue
+LatticeDbSharp.LatticeValueType
+LatticeDbSharp.LatticeValueType.Boolean = 1 -> LatticeDbSharp.LatticeValueType
+LatticeDbSharp.LatticeValueType.Bytes = 5 -> LatticeDbSharp.LatticeValueType
+LatticeDbSharp.LatticeValueType.Float = 3 -> LatticeDbSharp.LatticeValueType
+LatticeDbSharp.LatticeValueType.Integer = 2 -> LatticeDbSharp.LatticeValueType
+LatticeDbSharp.LatticeValueType.List = 7 -> LatticeDbSharp.LatticeValueType
+LatticeDbSharp.LatticeValueType.Map = 8 -> LatticeDbSharp.LatticeValueType
+LatticeDbSharp.LatticeValueType.Null = 0 -> LatticeDbSharp.LatticeValueType
+LatticeDbSharp.LatticeValueType.String = 4 -> LatticeDbSharp.LatticeValueType
+LatticeDbSharp.LatticeValueType.Vector = 6 -> LatticeDbSharp.LatticeValueType
+override LatticeDbSharp.LatticeEdgeId.GetHashCode() -> int
+override LatticeDbSharp.LatticeNodeId.GetHashCode() -> int
+static LatticeDbSharp.LatticeDatabase.Open(string! path, LatticeDbSharp.LatticeDatabaseOptions? options = null) -> LatticeDbSharp.LatticeDatabase!
+static LatticeDbSharp.LatticeDatabase.OpenMemory(LatticeDbSharp.LatticeDatabaseOptions? options = null) -> LatticeDbSharp.LatticeDatabase!
+static LatticeDbSharp.LatticeEdgeId.operator !=(LatticeDbSharp.LatticeEdgeId left, LatticeDbSharp.LatticeEdgeId right) -> bool
+static LatticeDbSharp.LatticeEdgeId.operator ==(LatticeDbSharp.LatticeEdgeId left, LatticeDbSharp.LatticeEdgeId right) -> bool
+static LatticeDbSharp.LatticeNative.IsAvailable.get -> bool
+static LatticeDbSharp.LatticeNative.LibraryPath.get -> string?
+static LatticeDbSharp.LatticeNative.PinnedCommit.get -> string!
+static LatticeDbSharp.LatticeNative.PinnedVersion.get -> string!
+static LatticeDbSharp.LatticeNative.Version.get -> string!
+static LatticeDbSharp.LatticeNodeId.operator !=(LatticeDbSharp.LatticeNodeId left, LatticeDbSharp.LatticeNodeId right) -> bool
+static LatticeDbSharp.LatticeNodeId.operator ==(LatticeDbSharp.LatticeNodeId left, LatticeDbSharp.LatticeNodeId right) -> bool
+~override LatticeDbSharp.LatticeEdgeId.Equals(object obj) -> bool
+~override LatticeDbSharp.LatticeEdgeId.ToString() -> string
+~override LatticeDbSharp.LatticeNodeId.Equals(object obj) -> bool
+~override LatticeDbSharp.LatticeNodeId.ToString() -> string
+LatticeDbSharp.LatticeEdgeInfo
+LatticeDbSharp.LatticeEdgeInfo.<Clone>$() -> LatticeDbSharp.LatticeEdgeInfo!
+LatticeDbSharp.LatticeEdgeInfo.Deconstruct(out LatticeDbSharp.LatticeEdgeId Id, out LatticeDbSharp.LatticeNodeId Source, out LatticeDbSharp.LatticeNodeId Target, out string! Type) -> void
+LatticeDbSharp.LatticeEdgeInfo.Equals(LatticeDbSharp.LatticeEdgeInfo? other) -> bool
+LatticeDbSharp.LatticeEdgeInfo.Id.get -> LatticeDbSharp.LatticeEdgeId
+LatticeDbSharp.LatticeEdgeInfo.Id.init -> void
+LatticeDbSharp.LatticeEdgeInfo.LatticeEdgeInfo(LatticeDbSharp.LatticeEdgeId Id, LatticeDbSharp.LatticeNodeId Source, LatticeDbSharp.LatticeNodeId Target, string! Type) -> void
+LatticeDbSharp.LatticeEdgeInfo.Source.get -> LatticeDbSharp.LatticeNodeId
+LatticeDbSharp.LatticeEdgeInfo.Source.init -> void
+LatticeDbSharp.LatticeEdgeInfo.Target.get -> LatticeDbSharp.LatticeNodeId
+LatticeDbSharp.LatticeEdgeInfo.Target.init -> void
+LatticeDbSharp.LatticeEdgeInfo.Type.get -> string!
+LatticeDbSharp.LatticeEdgeInfo.Type.init -> void
+LatticeDbSharp.LatticeTransaction.DeleteEdge(LatticeDbSharp.LatticeNodeId source, LatticeDbSharp.LatticeNodeId target, string! edgeType) -> void
+LatticeDbSharp.LatticeTransaction.GetEdgeProperty(LatticeDbSharp.LatticeEdgeId edgeId, string! key) -> LatticeDbSharp.LatticeValue
+LatticeDbSharp.LatticeTransaction.GetIncomingEdges(LatticeDbSharp.LatticeNodeId nodeId) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeEdgeInfo!>!
+LatticeDbSharp.LatticeTransaction.GetIncomingEdges(LatticeDbSharp.LatticeNodeId nodeId, string! edgeType, int limit = 0) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeEdgeInfo!>!
+LatticeDbSharp.LatticeTransaction.GetOutgoingEdges(LatticeDbSharp.LatticeNodeId nodeId) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeEdgeInfo!>!
+LatticeDbSharp.LatticeTransaction.GetOutgoingEdges(LatticeDbSharp.LatticeNodeId nodeId, string! edgeType, int limit = 0) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeEdgeInfo!>!
+LatticeDbSharp.LatticeTransaction.RemoveEdgeProperty(LatticeDbSharp.LatticeEdgeId edgeId, string! key) -> void
+LatticeDbSharp.LatticeTransaction.SetEdgeProperty(LatticeDbSharp.LatticeEdgeId edgeId, string! key, LatticeDbSharp.LatticeValue value) -> void
+LatticeDbSharp.LatticeTransaction.TryGetEdgeProperty(LatticeDbSharp.LatticeEdgeId edgeId, string! key, out LatticeDbSharp.LatticeValue value) -> bool
+override LatticeDbSharp.LatticeEdgeInfo.Equals(object? obj) -> bool
+override LatticeDbSharp.LatticeEdgeInfo.GetHashCode() -> int
+override LatticeDbSharp.LatticeEdgeInfo.ToString() -> string!
+static LatticeDbSharp.LatticeEdgeInfo.operator !=(LatticeDbSharp.LatticeEdgeInfo? left, LatticeDbSharp.LatticeEdgeInfo? right) -> bool
+static LatticeDbSharp.LatticeEdgeInfo.operator ==(LatticeDbSharp.LatticeEdgeInfo? left, LatticeDbSharp.LatticeEdgeInfo? right) -> bool

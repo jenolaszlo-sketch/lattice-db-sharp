@@ -141,6 +141,35 @@ adapts embedding stacks without taking a dependency on any of them:
   cancellation forwarding, dimension errors, top-k forwarding, metadata
   neutrality, and no native-HTTP-client use.
 
+## Extensions.AI package (proposed)
+
+The full proposal lives in [extensions-ai-proposal.md](extensions-ai-proposal.md):
+a `LatticeDbSharp.Extensions.AI` package adapting Microsoft's `VectorStore`
+contract to LatticeDB, with `IEmbeddingGenerator<string, Embedding<float>>`
+for model-backed embeddings and Baize as an external adapter, never a
+dependency. It supersedes the earlier custom-`IEmbeddingProvider` sketch:
+no new embedding interface is introduced.
+
+Review notes recorded against the proposal:
+
+- Attribute and contract names (`VectorStoreKey/Data/Vector`,
+  `GetCollection`, `GetDynamicCollection`, `GetService`,
+  `ListCollectionNamesAsync`) verified against current
+  Microsoft.Extensions.VectorData; add the missing
+  `CollectionExistsAsync` to the contract list.
+- Microsoft marks typed `GetCollection<TKey, TRecord>` itself
+  `RequiresUnreferencedCode`/`RequiresDynamicCode`: the package's AOT story
+  routes through `GetDynamicCollection` plus explicit definitions, which
+  promotes dynamic models from milestone-1.1 nice-to-have to AOT-critical.
+- The engine stores one vector per node, so multi-vector schemas must be
+  rejected rather than investigated further.
+- Microsoft expects `VectorStore` implementations to be thread-safe; the
+  adapter must document and hold that guarantee.
+- Distance-function mapping, filter-expression coverage, and score
+  semantics remain genuine investigations (Milestone 0), as does whether
+  DataIngestion/Agent Framework compat emerges without adapters.
+- New package starts at `0.1.0-preview.1` following repository versioning.
+
 ## Phase 3 — durable events (0.3.0)
 
 - [ ] Named stream publication/read, sequence numbers, offsets, and trimming.

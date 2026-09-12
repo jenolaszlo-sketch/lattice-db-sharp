@@ -1081,6 +1081,168 @@ public sealed class NativeFeasibilityTests
         read.Commit();
     }
 
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    // A single flipped byte can land in unchecked space and open normally;
+    // widespread corruption across the file must fail at open instead.
+    public void Corrupt_database_file_fails_cleanly_without_harming_others()
+    {
+        using var directory = TemporaryDirectory.Create();
+        var path = Path.Combine(directory.Path, "corrupt.ltdb");
+        using (var database = LatticeDatabase.Open(path, new LatticeDatabaseOptions { Create = true }))
+        using (var write = database.BeginWriteTransaction())
+        {
+            var node = write.CreateNode("Persisted");
+            write.SetProperty(node, "name", LatticeValue.From("Ada"));
+            write.Commit();
+        }
+
+        var bytes = File.ReadAllBytes(path);
+        for (var index = 0; index < bytes.Length; index += 511)
+        {
+            bytes[index] ^= 0xff;
+        }
+
+        File.WriteAllBytes(path, bytes);
+        Assert.Throws<LatticeException>(() => LatticeDatabase.Open(path));
+
+        var healthyPath = Path.Combine(directory.Path, "healthy.ltdb");
+        using var healthy = LatticeDatabase.Open(healthyPath, new LatticeDatabaseOptions { Create = true });
+        using var verify = healthy.BeginWriteTransaction();
+        verify.CreateNode("Alive");
+        verify.Commit();
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Truncated_tail_repairs_or_rejects_without_hanging()
+    {
+        using var directory = TemporaryDirectory.Create();
+        var path = Path.Combine(directory.Path, "truncated.ltdb");
+        using (var database = LatticeDatabase.Open(path, new LatticeDatabaseOptions { Create = true }))
+        using (var write = database.BeginWriteTransaction())
+        {
+            write.CreateNode("Persisted");
+            write.Commit();
+        }
+
+        var bytes = File.ReadAllBytes(path);
+        File.WriteAllBytes(path, bytes[..Math.Max(0, bytes.Length - 8)]);
+        try
+        {
+            using var repaired = LatticeDatabase.Open(path);
+            using var read = repaired.BeginReadTransaction();
+            read.Commit();
+        }
+        catch (LatticeException)
+        {
+        }
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Full_database_serialize_restore_preserves_graph()
+    {
+        using var database = LatticeDatabase.OpenMemory();
+        using (var write = database.BeginWriteTransaction())
+        {
+            LatticeNodeId? previous = null;
+            for (var index = 0; index < 100; index++)
+            {
+                var node = write.CreateNode("Chain");
+                write.SetProperty(node, "index", LatticeValue.From((long)index));
+                if (previous is { } parent)
+                {
+                    write.CreateEdge(parent, node, "LINKS");
+                }
+
+                previous = node;
+            }
+
+            write.Commit();
+        }
+
+        var restored = LatticeDatabase.Deserialize(database.Serialize());
+        using var read = restored.BeginReadTransaction();
+        var nodes = read.GetAllNodes();
+        Assert.Equal(100, nodes.Count);
+        var totalEdges = 0;
+        foreach (var node in nodes)
+        {
+            totalEdges += read.GetOutgoingEdges(node).Count;
+        }
+
+        Assert.Equal(99, totalEdges);
+        read.Commit();
+        restored.Dispose();
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public async Task Second_open_of_locked_file_fails_fast_instead_of_hanging()
+    {
+        using var directory = TemporaryDirectory.Create();
+        var path = Path.Combine(directory.Path, "locked.ltdb");
+        using var first = LatticeDatabase.Open(path, new LatticeDatabaseOptions { Create = true });
+        var second = Task.Run(() =>
+        {
+            try
+            {
+                using var database = LatticeDatabase.Open(path);
+                return "opened";
+            }
+            catch (LatticeException)
+            {
+                return "rejected";
+            }
+        });
+        var completed = await Task.WhenAny(second, Task.Delay(TimeSpan.FromSeconds(15)));
+        Assert.Same(second, completed);
+        Assert.Equal("rejected", await second);
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Repeated_database_lifecycles_stay_memory_bounded()
+    {
+        GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+        var baseline = GC.GetTotalMemory(forceFullCollection: true);
+        for (var cycle = 0; cycle < 100; cycle++)
+        {
+            using var database = LatticeDatabase.OpenMemory();
+            using (var write = database.BeginWriteTransaction())
+            {
+                var first = write.CreateNode("Cycle");
+                var second = write.CreateNode("Cycle");
+                write.CreateEdge(first, second, "LINKS");
+                write.Commit();
+            }
+
+            using var read = database.BeginReadTransaction();
+            Assert.Equal(2, read.GetAllNodes().Count);
+            read.Commit();
+        }
+
+        GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+        var growth = GC.GetTotalMemory(forceFullCollection: false) - baseline;
+        Assert.True(growth < 64L * 1024 * 1024, $"Managed memory grew by {growth} bytes over 100 lifecycles.");
+    }
+
     private static WorkerProcess StartWorker(string mode, string path, string? access = null)
     {
         var workerAssembly = typeof(WorkerMarker).Assembly.Location;

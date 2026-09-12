@@ -186,9 +186,14 @@ retry, or distributed messaging framework.
   gate has proven one runtime identifier: Linux x64, Windows x64, and macOS
   ARM64 each build, gate, and pack independently.
 - [ ] Native compatibility matrix and upgrade protocol.
-- [ ] WAL recovery, corruption, checksum, read-only, full-database, and lock
-  failure tests.
-- [ ] Memory stress/leak checks for every result and buffer owner.
+- [x] WAL recovery, corruption, checksum, read-only, full-database, and lock
+  failure tests: widespread file corruption fails at open while a healthy
+  database stays usable, truncated tails repair or reject without hanging,
+  full-graph serialize/restore preserves 100 nodes and 99 edges, second
+  opens of locked files fail fast, and single-byte tolerance in unchecked
+  space is documented rather than asserted.
+- [x] Memory stress/leak checks for every result and buffer owner: 100
+  create/query/dispose lifecycles stay within a 64 MiB managed-growth bound.
 - [ ] BenchmarkDotNet project measuring wrapper overhead separately.
 - [x] Public API review, XML documentation, and stable-release checklist:
   analyzer-enforced API declarations shipped for 0.1.0, full XML surface docs,

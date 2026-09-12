@@ -382,6 +382,17 @@ internal static partial class NativeMethods
     [LibraryImport(LibraryName, EntryPoint = "lattice_fts_result_free")]
     internal static partial void FreeFtsResult(nint result);
 
+    [LibraryImport(LibraryName, EntryPoint = "lattice_hash_embed", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode HashEmbed(
+        string text,
+        nuint textLength,
+        ushort dimensions,
+        out nint vector,
+        out uint dimensionsOut);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_hash_embed_free")]
+    internal static partial void FreeHashEmbed(nint vector, uint dimensions);
+
     [LibraryImport(LibraryName, EntryPoint = "lattice_batch_insert")]
     internal static partial NativeErrorCode BatchInsert(
         nint transaction,

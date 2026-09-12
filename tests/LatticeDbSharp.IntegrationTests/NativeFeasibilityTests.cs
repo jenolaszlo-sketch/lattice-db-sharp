@@ -1047,6 +1047,40 @@ public sealed class NativeFeasibilityTests
         Assert.Throws<LatticeException>(() => database.FtsSearch("Article", "text", "quick", limit: 10));
     }
 
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Hash_embeddings_are_deterministic_lexical_fingerprints()
+    {
+        var first = LatticeHashEmbeddings.HashEmbed("The quick brown fox", 64);
+        var second = LatticeHashEmbeddings.HashEmbed("The quick brown fox", 64);
+        Assert.Equal(64, first.Length);
+        Assert.Equal(first, second);
+        Assert.NotEqual(first, LatticeHashEmbeddings.HashEmbed("Completely different words here", 64));
+        Assert.Equal(128, LatticeHashEmbeddings.HashEmbed("The quick brown fox", 128).Length);
+        Assert.Throws<ArgumentException>(() => LatticeHashEmbeddings.HashEmbed("  ", 64));
+        Assert.Throws<ArgumentOutOfRangeException>(() => LatticeHashEmbeddings.HashEmbed("text", 0));
+
+        using var database = LatticeDatabase.OpenMemory(new LatticeDatabaseOptions
+        {
+            EnableVector = true,
+            VectorDimensions = 64,
+        });
+        using (var write = database.BeginWriteTransaction())
+        {
+            var node = write.CreateNode("Doc");
+            write.SetVector(node, first);
+            write.Commit();
+        }
+
+        using var read = database.BeginReadTransaction();
+        var hits = read.VectorSearch(first, count: 1);
+        Assert.Single(hits);
+        read.Commit();
+    }
+
     private static WorkerProcess StartWorker(string mode, string path, string? access = null)
     {
         var workerAssembly = typeof(WorkerMarker).Assembly.Location;

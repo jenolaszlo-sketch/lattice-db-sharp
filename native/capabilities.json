@@ -65,6 +65,11 @@
       "status": "supported",
       "symbol": "lattice_edge_delete"
     },
+    "embedding.hash": {
+      "status": "supported",
+      "symbol": "lattice_hash_embed",
+      "notes": "Deterministic lexical fingerprints for offline fuzzy matching; not semantic evidence. HTTP embedding clients stay out of scope."
+    },
     "propertyIndex.node": {
       "status": "supported",
       "symbol": "lattice_node_property_index_create",

@@ -67,3 +67,5 @@ override LatticeDbSharp.LatticeFtsHit.GetHashCode() -> int
 override LatticeDbSharp.LatticeFtsHit.ToString() -> string!
 static LatticeDbSharp.LatticeFtsHit.operator !=(LatticeDbSharp.LatticeFtsHit? left, LatticeDbSharp.LatticeFtsHit? right) -> bool
 static LatticeDbSharp.LatticeFtsHit.operator ==(LatticeDbSharp.LatticeFtsHit? left, LatticeDbSharp.LatticeFtsHit? right) -> bool
+LatticeDbSharp.LatticeHashEmbeddings
+static LatticeDbSharp.LatticeHashEmbeddings.HashEmbed(string! text, int dimensions) -> float[]!

@@ -45,6 +45,91 @@ internal static partial class NativeMethods
         ulong nodeId,
         out byte exists);
 
+    [LibraryImport(LibraryName, EntryPoint = "lattice_get_nodes_by_label", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode GetNodesByLabel(
+        nint database,
+        string label,
+        nuint labelLength,
+        out nint nodeIds,
+        out nuint count);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_get_nodes_by_label_txn", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode GetNodesByLabelTransaction(
+        nint transaction,
+        string label,
+        nuint labelLength,
+        out nint nodeIds,
+        out nuint count);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_get_all_nodes_txn")]
+    internal static partial NativeErrorCode GetAllNodesTransaction(
+        nint transaction,
+        out nint nodeIds,
+        out nuint count);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_free_node_ids")]
+    internal static partial void FreeNodeIds(nint nodeIds, nuint count);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_node_property_index_create", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode CreateNodePropertyIndex(
+        nint database,
+        string label,
+        string property);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_node_property_index_drop", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode DropNodePropertyIndex(
+        nint database,
+        string label,
+        string property);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_property_index_create", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode CreateEdgePropertyIndex(
+        nint database,
+        string edgeType,
+        string property);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_property_index_drop", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode DropEdgePropertyIndex(
+        nint database,
+        string edgeType,
+        string property);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_nodes_find_by_label_property", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode FindNodesByLabelProperty(
+        nint transaction,
+        string label,
+        string property,
+        in NativeValue value,
+        nuint limit,
+        out nint nodeIds,
+        out nuint count);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edges_find_by_type_property", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode FindEdgesByTypeProperty(
+        nint transaction,
+        string edgeType,
+        string property,
+        in NativeValue value,
+        nuint limit,
+        out nint edgeIds,
+        out nuint count);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_serialize")]
+    internal static partial NativeErrorCode SerializeDatabase(
+        nint database,
+        out nint bytes,
+        out nuint length);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_deserialize")]
+    internal static partial NativeErrorCode DeserializeDatabase(
+        nint bytes,
+        nuint length,
+        in NativeOpenOptionsV4 options,
+        out nint database);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_free_bytes")]
+    internal static partial void FreeBytes(nint bytes, nuint length);
+
     [LibraryImport(LibraryName, EntryPoint = "lattice_edge_create", StringMarshalling = StringMarshalling.Utf8)]
     internal static partial NativeErrorCode CreateEdge(
         nint transaction,
@@ -129,6 +214,9 @@ internal static partial class NativeMethods
     [LibraryImport(LibraryName, EntryPoint = "lattice_edge_result_free")]
     internal static partial void FreeEdgeResult(nint result);
 
+    [LibraryImport(LibraryName, EntryPoint = "lattice_free_edge_ids")]
+    internal static partial void FreeEdgeIds(nint edgeIds, nuint count);
+
     [LibraryImport(LibraryName, EntryPoint = "lattice_node_add_label", StringMarshalling = StringMarshalling.Utf8)]
     internal static partial NativeErrorCode AddNodeLabel(
         nint transaction,
@@ -191,6 +279,158 @@ internal static partial class NativeMethods
         nint query,
         string name,
         in NativeValue value);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_query_bind_vector", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode BindQueryVector(
+        nint query,
+        string name,
+        nint vector,
+        uint dimensions);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_node_fts_index_create", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode CreateNodeFtsIndex(
+        nint database,
+        string label,
+        string property);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_node_fts_index_drop", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode DropNodeFtsIndex(
+        nint database,
+        string label,
+        string property);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_node_fts_index_exists", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode NodeFtsIndexExists(
+        nint database,
+        string label,
+        string property,
+        out byte exists);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_fts_index_create", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode CreateEdgeFtsIndex(
+        nint database,
+        string edgeType,
+        string property);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_fts_index_drop", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode DropEdgeFtsIndex(
+        nint database,
+        string edgeType,
+        string property);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_fts_index_exists", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode EdgeFtsIndexExists(
+        nint database,
+        string edgeType,
+        string property,
+        out byte exists);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_fts_search", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode FtsSearch(
+        nint database,
+        string label,
+        string property,
+        string query,
+        nuint queryLength,
+        uint limit,
+        out nint result);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_fts_search_txn", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode FtsSearchTransaction(
+        nint transaction,
+        string label,
+        string property,
+        string query,
+        nuint queryLength,
+        uint limit,
+        out nint result);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_fts_search_fuzzy", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode FtsSearchFuzzy(
+        nint database,
+        string label,
+        string property,
+        string query,
+        nuint queryLength,
+        uint limit,
+        uint maxDistance,
+        uint minTermLength,
+        out nint result);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_fts_search_fuzzy_txn", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode FtsSearchFuzzyTransaction(
+        nint transaction,
+        string label,
+        string property,
+        string query,
+        nuint queryLength,
+        uint limit,
+        uint maxDistance,
+        uint minTermLength,
+        out nint result);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_fts_result_count")]
+    internal static partial uint FtsResultCount(nint result);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_fts_result_get")]
+    internal static partial NativeErrorCode FtsResultGet(
+        nint result,
+        uint index,
+        out ulong nodeId,
+        out float score);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_fts_result_free")]
+    internal static partial void FreeFtsResult(nint result);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_hash_embed", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode HashEmbed(
+        string text,
+        nuint textLength,
+        ushort dimensions,
+        out nint vector,
+        out uint dimensionsOut);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_hash_embed_free")]
+    internal static partial void FreeHashEmbed(nint vector, uint dimensions);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_batch_insert")]
+    internal static partial NativeErrorCode BatchInsert(
+        nint transaction,
+        nint nodes,
+        uint count,
+        nint nodeIdsOut,
+        out uint countOut);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_vector_search")]
+    internal static partial NativeErrorCode VectorSearch(
+        nint database,
+        nint vector,
+        uint dimensions,
+        uint count,
+        ushort efSearch,
+        out nint result);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_vector_search_txn")]
+    internal static partial NativeErrorCode VectorSearchTransaction(
+        nint transaction,
+        nint vector,
+        uint dimensions,
+        uint count,
+        ushort efSearch,
+        out nint result);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_vector_result_count")]
+    internal static partial uint VectorResultCount(nint result);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_vector_result_get")]
+    internal static partial NativeErrorCode VectorResultGet(
+        nint result,
+        uint index,
+        out ulong nodeId,
+        out float distance);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_vector_result_free")]
+    internal static partial void FreeVectorResult(nint result);
 
     [LibraryImport(LibraryName, EntryPoint = "lattice_query_execute")]
     internal static partial NativeErrorCode ExecuteQuery(

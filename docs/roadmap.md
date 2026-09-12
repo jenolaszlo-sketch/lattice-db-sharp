@@ -89,14 +89,86 @@ executable tests without public pointers or manual native ownership.
 
 ## Phase 2 — retrieval (0.2.0)
 
-- [ ] Vector storage, search, bulk insertion, dimension validation, and result
-  ownership.
-- [ ] Per-property node/edge FTS indexes, BM25 results, and fuzzy search.
-- [ ] Property-index lifecycle and indexed lookup without silent scan fallback.
-- [ ] Retrieval correctness and wrapper-overhead benchmarks.
+- [x] Vector storage, search, bulk insertion, dimension validation, and result
+  ownership: `BatchInsertNodes`, database- and transaction-scoped top-k
+  search with detached hits, and vector query-parameter binding.
+- [x] Per-property node/edge FTS indexes, BM25 results, and fuzzy search,
+  with index-existence checks and explicit failure without a declared index.
+- [x] Property-index lifecycle and indexed lookup without silent scan
+  fallback: create/drop/exists plus indexed find with mandatory positive
+  limits (the engine rejects zero).
+- [x] Retrieval correctness and wrapper-overhead benchmarks: 29 integration
+  tests plus the `benchmarks/LatticeDbSharp.Benchmarks` harness with the
+  flat 100-to-1000 baseline in BENCHMARKS.md.
 
 Exit: graph traversal, vector similarity, and text retrieval can be combined
 through the wrapper with verified ownership and error behavior.
+
+## Phase 2 — follow-ups (0.2.x)
+
+### Deliberately unbound native surface
+
+These stay out of the wrapper unless a concrete consumer requires them:
+
+- Admin `lattice_edge_scan` (the header marks it unsuitable for hot-path expansion).
+- `lattice_deserialize_borrowed` (pinning caller memory for a database lifetime is GC-hostile; use copying `Deserialize`).
+- `lattice_query_cache_clear` / `lattice_query_cache_stats` (diagnostic admin surface, no consumer yet).
+- `lattice_node_remove_property` does not exist in the pinned header; node property removal is Cypher-only by engine design.
+- The native HTTP embedding client (`lattice_embedding_client_*`) stays unbound: model calls belong behind the host's model gateway (Baize in Penghou), which owns credentials, retry, usage, and provenance. Binding it would duplicate that governance inside the database wrapper.
+
+### Embedding provider package
+
+Ship text-to-vector convenience in a separate `LatticeDbSharp.Extensions.AI`-style
+package, never in core. Core keeps only vector storage and search; the package
+adapts embedding stacks without taking a dependency on any of them:
+
+- [ ] Investigate `Microsoft.Extensions.AI` first: adopt `IEmbeddingGenerator<string,
+  Embedding<float>>` if it fits (note its batch shape needs a single-text
+  adapter); introduce a minimal local interface only if it does not.
+- [ ] Transaction-scoped helpers on the real API shapes (`LatticeTransaction`
+  owns `SetVector`; results are `LatticeVectorHit`): embed-and-store plus
+  embed-query-then-top-k, with cancellation flowing into the provider only
+  (native vector ops follow current ABI governability, documented as such).
+- [ ] Dimension handling without invented checks: no managed accessor exists
+  for configured dimensions, so rely on native rejection and document it.
+- [ ] Include a `LatticeHashEmbeddingProvider` over the already-bound
+  `lattice_hash_embed` as the no-dependency offline example, documented as
+  lexical similarity rather than semantic evidence.
+- [ ] Provider errors propagate unchanged (never converted to database
+  errors); no provenance persistence in the wrapper.
+- [ ] Integration tests with fake providers (native engine required, so these
+  live in the integration suite): single invocation, vector passthrough,
+  cancellation forwarding, dimension errors, top-k forwarding, metadata
+  neutrality, and no native-HTTP-client use.
+
+## Extensions.AI package (proposed)
+
+The full proposal lives in [extensions-ai-proposal.md](extensions-ai-proposal.md):
+a `LatticeDbSharp.Extensions.AI` package adapting Microsoft's `VectorStore`
+contract to LatticeDB, with `IEmbeddingGenerator<string, Embedding<float>>`
+for model-backed embeddings and Baize as an external adapter, never a
+dependency. It supersedes the earlier custom-`IEmbeddingProvider` sketch:
+no new embedding interface is introduced.
+
+Review notes recorded against the proposal:
+
+- Attribute and contract names (`VectorStoreKey/Data/Vector`,
+  `GetCollection`, `GetDynamicCollection`, `GetService`,
+  `ListCollectionNamesAsync`) verified against current
+  Microsoft.Extensions.VectorData; add the missing
+  `CollectionExistsAsync` to the contract list.
+- Microsoft marks typed `GetCollection<TKey, TRecord>` itself
+  `RequiresUnreferencedCode`/`RequiresDynamicCode`: the package's AOT story
+  routes through `GetDynamicCollection` plus explicit definitions, which
+  promotes dynamic models from milestone-1.1 nice-to-have to AOT-critical.
+- The engine stores one vector per node, so multi-vector schemas must be
+  rejected rather than investigated further.
+- Microsoft expects `VectorStore` implementations to be thread-safe; the
+  adapter must document and hold that guarantee.
+- Distance-function mapping, filter-expression coverage, and score
+  semantics remain genuine investigations (Milestone 0), as does whether
+  DataIngestion/Agent Framework compat emerges without adapters.
+- New package starts at `0.1.0-preview.1` following repository versioning.
 
 ## Phase 3 — durable events (0.3.0)
 
@@ -114,9 +186,14 @@ retry, or distributed messaging framework.
   gate has proven one runtime identifier: Linux x64, Windows x64, and macOS
   ARM64 each build, gate, and pack independently.
 - [ ] Native compatibility matrix and upgrade protocol.
-- [ ] WAL recovery, corruption, checksum, read-only, full-database, and lock
-  failure tests.
-- [ ] Memory stress/leak checks for every result and buffer owner.
+- [x] WAL recovery, corruption, checksum, read-only, full-database, and lock
+  failure tests: widespread file corruption fails at open while a healthy
+  database stays usable, truncated tails repair or reject without hanging,
+  full-graph serialize/restore preserves 100 nodes and 99 edges, second
+  opens of locked files fail fast, and single-byte tolerance in unchecked
+  space is documented rather than asserted.
+- [x] Memory stress/leak checks for every result and buffer owner: 100
+  create/query/dispose lifecycles stay within a 64 MiB managed-growth bound.
 - [ ] BenchmarkDotNet project measuring wrapper overhead separately.
 - [x] Public API review, XML documentation, and stable-release checklist:
   analyzer-enforced API declarations shipped for 0.1.0, full XML surface docs,

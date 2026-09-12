@@ -834,6 +834,415 @@ public sealed class NativeFeasibilityTests
         }
     }
 
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Node_enumeration_lists_labeled_and_all_nodes()
+    {
+        using var database = LatticeDatabase.OpenMemory();
+        LatticeNodeId first;
+        LatticeNodeId second;
+        using (var write = database.BeginWriteTransaction())
+        {
+            first = write.CreateNode("Person");
+            second = write.CreateNode("Place");
+            write.Commit();
+        }
+
+        using (var read = database.BeginReadTransaction())
+        {
+            Assert.Equal([first], read.GetNodesByLabel("Person"));
+            Assert.Equal([second], read.GetNodesByLabel("Place"));
+            Assert.Empty(read.GetNodesByLabel("Missing"));
+            Assert.Equal(2, read.GetAllNodes().Count);
+            read.Commit();
+        }
+
+        Assert.Equal([first], database.GetNodesByLabel("Person"));
+        Assert.Empty(database.GetNodesByLabel("Missing"));
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Database_serialize_deserialize_round_trip_is_independent()
+    {
+        using var database = LatticeDatabase.OpenMemory();
+        LatticeNodeId node;
+        using (var write = database.BeginWriteTransaction())
+        {
+            node = write.CreateNode("Persisted");
+            write.SetProperty(node, "name", LatticeValue.From("Ada"));
+            write.Commit();
+        }
+
+        var bytes = database.Serialize();
+        Assert.NotEmpty(bytes);
+        using var copy = LatticeDatabase.Deserialize(bytes);
+        using (var read = copy.BeginReadTransaction())
+        {
+            Assert.True(read.NodeExists(node));
+            Assert.True(read.TryGetProperty(node, "name", out var name));
+            Assert.Equal("Ada", name.AsString());
+            read.Commit();
+        }
+
+        using (var write = database.BeginWriteTransaction())
+        {
+            write.DeleteNode(node);
+            write.Commit();
+        }
+
+        using var reread = copy.BeginReadTransaction();
+        Assert.True(reread.NodeExists(node));
+        reread.Commit();
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Database_deserialize_rejects_corrupt_bytes()
+    {
+        Assert.Throws<LatticeException>(() => LatticeDatabase.Deserialize("not-a-database"u8.ToArray()));
+        Assert.Throws<ArgumentException>(() => LatticeDatabase.Deserialize([]));
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Property_indexes_serve_indexed_finds_and_drop_cleanly()
+    {
+        using var database = LatticeDatabase.OpenMemory();
+        LatticeNodeId ada;
+        LatticeNodeId bob;
+        using (var write = database.BeginWriteTransaction())
+        {
+            ada = write.CreateNode("Person");
+            write.SetProperty(ada, "name", LatticeValue.From("Ada"));
+            bob = write.CreateNode("Person");
+            write.SetProperty(bob, "name", LatticeValue.From("Bob"));
+            var edge = write.CreateEdge(ada, bob, "KNOWS");
+            write.SetEdgeProperty(edge, "weight", LatticeValue.From(3L));
+            write.Commit();
+        }
+
+        database.CreateNodePropertyIndex("Person", "name");
+        database.CreateEdgePropertyIndex("KNOWS", "weight");
+        using (var read = database.BeginReadTransaction())
+        {
+            Assert.Equal([ada], read.FindNodesByLabelProperty("Person", "name", LatticeValue.From("Ada"), limit: 10));
+            Assert.Empty(read.FindNodesByLabelProperty("Person", "name", LatticeValue.From("Nobody"), limit: 10));
+            var limited = read.FindNodesByLabelProperty("Person", "name", LatticeValue.From("Ada"), limit: 1);
+            Assert.Single(limited);
+            var edges = read.FindEdgesByTypeProperty("KNOWS", "weight", LatticeValue.From(3L), limit: 10);
+            Assert.Single(edges);
+            Assert.Empty(read.FindEdgesByTypeProperty("KNOWS", "weight", LatticeValue.From(4L), limit: 10));
+            read.Commit();
+        }
+
+        database.DropNodePropertyIndex("Person", "name");
+        database.DropEdgePropertyIndex("KNOWS", "weight");
+        using (var read = database.BeginReadTransaction())
+        {
+            Assert.Throws<LatticeException>(() => read.FindNodesByLabelProperty("Person", "name", LatticeValue.From("Ada"), limit: 10));
+            Assert.Throws<LatticeException>(() => read.FindEdgesByTypeProperty("KNOWS", "weight", LatticeValue.From(3L), limit: 10));
+            read.Commit();
+        }
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Vector_batch_insert_search_and_bind_round_trip()
+    {
+        using var database = LatticeDatabase.OpenMemory(new LatticeDatabaseOptions
+        {
+            EnableVector = true,
+            VectorDimensions = 3,
+        });
+        IReadOnlyList<LatticeNodeId> ids;
+        using (var write = database.BeginWriteTransaction())
+        {
+            ids = write.BatchInsertNodes(
+            [
+                new("Item", new float[] { 1, 0, 0 }),
+                new("Item", new float[] { 0, 1, 0 }),
+                new("Other", new float[] { 0, 0, 1 })
+            ]);
+            Assert.Equal(3, ids.Count);
+            Assert.Empty(write.BatchInsertNodes([]));
+            Assert.Throws<ArgumentException>(() => write.BatchInsertNodes([new("Item", Array.Empty<float>())]));
+            write.Commit();
+        }
+
+        using (var read = database.BeginReadTransaction())
+        {
+            var hits = read.VectorSearch(new float[] { 1, 0, 0 }, count: 2);
+            Assert.Equal(2, hits.Count);
+            Assert.Equal(ids[0], hits[0].NodeId);
+            Assert.True(hits[0].Distance <= hits[1].Distance);
+            read.Commit();
+        }
+
+        var dbHits = database.VectorSearch(new float[] { 0, 0, 1 }, count: 1);
+        Assert.Single(dbHits);
+        Assert.Equal(3, database.VectorSearch(new float[] { 0, 0, 1 }, count: 10).Count);
+        Assert.Throws<ArgumentOutOfRangeException>(() => database.VectorSearch(new float[] { 1, 0, 0 }, 0));
+        Assert.Throws<ArgumentException>(() => database.VectorSearch(Array.Empty<float>(), 1));
+
+        using var query = database.Prepare("MATCH (n) RETURN n LIMIT 1");
+        query.BindVector("v", new float[] { 1, 2, 3 });
+        Assert.Throws<ArgumentException>(() => query.BindVector("  ", new float[] { 1 }));
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Full_text_search_scores_and_drops_cleanly()
+    {
+        using var database = LatticeDatabase.OpenMemory();
+        Assert.False(database.NodeFtsIndexExists("Article", "text"));
+        using (var write = database.BeginWriteTransaction())
+        {
+            var first = write.CreateNode("Article");
+            write.SetProperty(first, "text", LatticeValue.From("The quick brown fox jumps."));
+            var second = write.CreateNode("Article");
+            write.SetProperty(second, "text", LatticeValue.From("A slow green turtle walks."));
+            var other = write.CreateNode("Note");
+            write.SetProperty(other, "text", LatticeValue.From("The quick brown fox jumps."));
+            write.Commit();
+        }
+
+        Assert.Throws<LatticeException>(() => database.FtsSearch("Article", "text", "quick", limit: 10));
+        database.CreateNodeFtsIndex("Article", "text");
+        Assert.True(database.NodeFtsIndexExists("Article", "text"));
+
+        using (var read = database.BeginReadTransaction())
+        {
+            var hits = read.FtsSearch("Article", "text", "quick fox", limit: 10);
+            Assert.Single(hits);
+            var fuzzy = read.FtsSearchFuzzy("Article", "text", "quikc", limit: 10);
+            Assert.Single(fuzzy);
+            Assert.Equal(hits[0].NodeId, fuzzy[0].NodeId);
+            Assert.True(hits[0].Score > 0);
+            read.Commit();
+        }
+
+        var dbHits = database.FtsSearch("Article", "text", "turtle", limit: 10);
+        Assert.Single(dbHits);
+        database.DropNodeFtsIndex("Article", "text");
+        Assert.False(database.NodeFtsIndexExists("Article", "text"));
+        Assert.Throws<LatticeException>(() => database.FtsSearch("Article", "text", "quick", limit: 10));
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Hash_embeddings_are_deterministic_lexical_fingerprints()
+    {
+        var first = LatticeHashEmbeddings.HashEmbed("The quick brown fox", 64);
+        var second = LatticeHashEmbeddings.HashEmbed("The quick brown fox", 64);
+        Assert.Equal(64, first.Length);
+        Assert.Equal(first, second);
+        Assert.NotEqual(first, LatticeHashEmbeddings.HashEmbed("Completely different words here", 64));
+        Assert.Equal(128, LatticeHashEmbeddings.HashEmbed("The quick brown fox", 128).Length);
+        Assert.Throws<ArgumentException>(() => LatticeHashEmbeddings.HashEmbed("  ", 64));
+        Assert.Throws<ArgumentOutOfRangeException>(() => LatticeHashEmbeddings.HashEmbed("text", 0));
+
+        using var database = LatticeDatabase.OpenMemory(new LatticeDatabaseOptions
+        {
+            EnableVector = true,
+            VectorDimensions = 64,
+        });
+        using (var write = database.BeginWriteTransaction())
+        {
+            var node = write.CreateNode("Doc");
+            write.SetVector(node, first);
+            write.Commit();
+        }
+
+        using var read = database.BeginReadTransaction();
+        var hits = read.VectorSearch(first, count: 1);
+        Assert.Single(hits);
+        read.Commit();
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    // A single flipped byte can land in unchecked space and open normally;
+    // widespread corruption across the file must fail at open instead.
+    public void Corrupt_database_file_fails_cleanly_without_harming_others()
+    {
+        using var directory = TemporaryDirectory.Create();
+        var path = Path.Combine(directory.Path, "corrupt.ltdb");
+        using (var database = LatticeDatabase.Open(path, new LatticeDatabaseOptions { Create = true }))
+        using (var write = database.BeginWriteTransaction())
+        {
+            var node = write.CreateNode("Persisted");
+            write.SetProperty(node, "name", LatticeValue.From("Ada"));
+            write.Commit();
+        }
+
+        var bytes = File.ReadAllBytes(path);
+        for (var index = 0; index < bytes.Length; index += 511)
+        {
+            bytes[index] ^= 0xff;
+        }
+
+        File.WriteAllBytes(path, bytes);
+        Assert.Throws<LatticeException>(() => LatticeDatabase.Open(path));
+
+        var healthyPath = Path.Combine(directory.Path, "healthy.ltdb");
+        using var healthy = LatticeDatabase.Open(healthyPath, new LatticeDatabaseOptions { Create = true });
+        using var verify = healthy.BeginWriteTransaction();
+        verify.CreateNode("Alive");
+        verify.Commit();
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Truncated_tail_repairs_or_rejects_without_hanging()
+    {
+        using var directory = TemporaryDirectory.Create();
+        var path = Path.Combine(directory.Path, "truncated.ltdb");
+        using (var database = LatticeDatabase.Open(path, new LatticeDatabaseOptions { Create = true }))
+        using (var write = database.BeginWriteTransaction())
+        {
+            write.CreateNode("Persisted");
+            write.Commit();
+        }
+
+        var bytes = File.ReadAllBytes(path);
+        File.WriteAllBytes(path, bytes[..Math.Max(0, bytes.Length - 8)]);
+        try
+        {
+            using var repaired = LatticeDatabase.Open(path);
+            using var read = repaired.BeginReadTransaction();
+            read.Commit();
+        }
+        catch (LatticeException)
+        {
+        }
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Full_database_serialize_restore_preserves_graph()
+    {
+        using var database = LatticeDatabase.OpenMemory();
+        using (var write = database.BeginWriteTransaction())
+        {
+            LatticeNodeId? previous = null;
+            for (var index = 0; index < 100; index++)
+            {
+                var node = write.CreateNode("Chain");
+                write.SetProperty(node, "index", LatticeValue.From((long)index));
+                if (previous is { } parent)
+                {
+                    write.CreateEdge(parent, node, "LINKS");
+                }
+
+                previous = node;
+            }
+
+            write.Commit();
+        }
+
+        var restored = LatticeDatabase.Deserialize(database.Serialize());
+        using var read = restored.BeginReadTransaction();
+        var nodes = read.GetAllNodes();
+        Assert.Equal(100, nodes.Count);
+        var totalEdges = 0;
+        foreach (var node in nodes)
+        {
+            totalEdges += read.GetOutgoingEdges(node).Count;
+        }
+
+        Assert.Equal(99, totalEdges);
+        read.Commit();
+        restored.Dispose();
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public async Task Second_open_of_locked_file_fails_fast_instead_of_hanging()
+    {
+        using var directory = TemporaryDirectory.Create();
+        var path = Path.Combine(directory.Path, "locked.ltdb");
+        using var first = LatticeDatabase.Open(path, new LatticeDatabaseOptions { Create = true });
+        var second = Task.Run(() =>
+        {
+            try
+            {
+                using var database = LatticeDatabase.Open(path);
+                return "opened";
+            }
+            catch (LatticeException)
+            {
+                return "rejected";
+            }
+        });
+        var completed = await Task.WhenAny(second, Task.Delay(TimeSpan.FromSeconds(15)));
+        Assert.Same(second, completed);
+        Assert.Equal("rejected", await second);
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Repeated_database_lifecycles_stay_memory_bounded()
+    {
+        GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+        var baseline = GC.GetTotalMemory(forceFullCollection: true);
+        for (var cycle = 0; cycle < 100; cycle++)
+        {
+            using var database = LatticeDatabase.OpenMemory();
+            using (var write = database.BeginWriteTransaction())
+            {
+                var first = write.CreateNode("Cycle");
+                var second = write.CreateNode("Cycle");
+                write.CreateEdge(first, second, "LINKS");
+                write.Commit();
+            }
+
+            using var read = database.BeginReadTransaction();
+            Assert.Equal(2, read.GetAllNodes().Count);
+            read.Commit();
+        }
+
+        GC.Collect(2, GCCollectionMode.Forced, blocking: true);
+        var growth = GC.GetTotalMemory(forceFullCollection: false) - baseline;
+        Assert.True(growth < 64L * 1024 * 1024, $"Managed memory grew by {growth} bytes over 100 lifecycles.");
+    }
+
     private static WorkerProcess StartWorker(string mode, string path, string? access = null)
     {
         var workerAssembly = typeof(WorkerMarker).Assembly.Location;

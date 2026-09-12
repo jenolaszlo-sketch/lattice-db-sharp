@@ -8,7 +8,7 @@ Initial upstream baseline:
 
 | Component | Version |
 | --- | --- |
-| LatticeDbSharp | 0.1.0-preview.1 |
+| LatticeDbSharp | 0.1.0-preview.2 |
 | LatticeDB | v0.15.0 |
 | LatticeDB commit | 9800159e22e200f2b6888c7c6be1810adb695506 |
 | Zig toolchain | 0.16.0 |
@@ -19,8 +19,8 @@ pointer ownership, UTF-8, size_t, integer widths, and free functions.
 
 A platform is supported only after its exact native asset passes ABI,
 functional, persistence/recovery, locking, and repeated cleanup tests. Linux
-x64 and Windows x64 have verified build/package/load mechanics and pass all 22
-expanded native tests. macOS ARM64 remains the next candidate.
+x64, Windows x64, and macOS ARM64 have verified build/package/load mechanics
+and pass all 22 expanded native tests.
 
 The packaged native assets are built from the pinned upstream commit plus the
 hash-verified patch set declared in `native/upstream.json`. That patch persists

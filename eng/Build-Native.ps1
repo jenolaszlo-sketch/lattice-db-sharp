@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('linux-x64', 'win-x64')]
+    [ValidateSet('linux-x64', 'win-x64', 'osx-arm64')]
     [string] $RuntimeIdentifier = 'linux-x64',
     [string] $RepositoryRoot = (Split-Path -Parent $PSScriptRoot),
     [string] $SourceDirectory,
@@ -82,13 +82,14 @@ if (-not (Test-Path -LiteralPath $zig -PathType Leaf)) {
     throw "Zig executable '$zig' does not exist."
 }
 $isWindowsTarget = $RuntimeIdentifier -eq 'win-x64'
-$target = if ($isWindowsTarget) { 'x86_64-windows-gnu' } else { 'x86_64-linux-gnu' }
-$libraryFileName = if ($isWindowsTarget) { 'lattice.dll' } else { 'liblattice.so' }
+$isMacOsTarget = $RuntimeIdentifier -eq 'osx-arm64'
+$target = if ($isWindowsTarget) { 'x86_64-windows-gnu' } elseif ($isMacOsTarget) { 'aarch64-macos' } else { 'x86_64-linux-gnu' }
+$libraryFileName = if ($isWindowsTarget) { 'lattice.dll' } elseif ($isMacOsTarget) { 'liblattice.dylib' } else { 'liblattice.so' }
 $builtLibrary = if ($isWindowsTarget) {
     Join-Path $sourceDirectory 'zig-out/bin/lattice.dll'
 }
 else {
-    Join-Path $sourceDirectory 'zig-out/lib/liblattice.so'
+    Join-Path $sourceDirectory "zig-out/lib/$libraryFileName"
 }
 $buildSourceDirectory = $sourceDirectory
 $patchProvenance = $null
@@ -247,7 +248,7 @@ if ($null -ne $manifest.patchSet) {
         Join-Path $buildSourceDirectory 'zig-out/bin/lattice.dll'
     }
     else {
-        Join-Path $buildSourceDirectory 'zig-out/lib/liblattice.so'
+        Join-Path $buildSourceDirectory "zig-out/lib/$libraryFileName"
     }
     $patchProvenance = [ordered]@{
         id = [string] $patchManifest.id
@@ -285,11 +286,27 @@ New-Item -ItemType Directory -Path $stagingDirectory -Force | Out-Null
 $stagedLibrary = Join-Path $stagingDirectory $libraryFileName
 Copy-Item -LiteralPath $builtLibrary -Destination $stagedLibrary -Force
 
+if ($isMacOsTarget) {
+    # Apple Silicon refuses to map unsigned code pages; ad-hoc signing is
+    # sufficient for a bundled dependency loaded by a non-hardened host.
+    & codesign --sign - --force --timestamp=none $stagedLibrary
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Ad-hoc code signing of the macOS native library failed.'
+    }
+}
+
 $probeSource = Join-Path $repositoryRootPath 'native/probes/abi.c'
 $probeExecutable = Join-Path $stagingDirectory $(if ($isWindowsTarget) { 'lattice-abi-probe.exe' } else { 'lattice-abi-probe' })
 & $zig cc $probeSource "-I$(Join-Path $repositoryRootPath 'native/include')" "-target" $target -o $probeExecutable
 if ($LASTEXITCODE -ne 0) {
     throw 'The LatticeDB ABI probe did not compile.'
+}
+
+if ($isMacOsTarget) {
+    & codesign --sign - --force --timestamp=none $probeExecutable
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Ad-hoc code signing of the macOS ABI probe failed.'
+    }
 }
 
 $abiJson = (& $probeExecutable).Trim()
@@ -332,6 +349,18 @@ $exports = if ($isWindowsTarget) {
         [Runtime.InteropServices.NativeLibrary]::Free($libraryHandle)
     }
 }
+elseif ($isMacOsTarget) {
+    # Mach-O nm has no GNU -D flag; list globals and keep defined text
+    # symbols. C names carry a '_' prefix that is stripped for comparison.
+    $macSymbols = @(& $nm -g $stagedLibrary)
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Unable to inspect the LatticeDB shared-library exports with nm.'
+    }
+    @($macSymbols |
+        Where-Object { $_ -match '\sT\s' } |
+        ForEach-Object { ((($_ -split '\s+')[-1]).TrimStart('_')) } |
+        Where-Object { $_ })
+}
 else {
     @(& $nm -D --defined-only $stagedLibrary)
     if ($LASTEXITCODE -ne 0) {
@@ -339,7 +368,7 @@ else {
     }
 }
 foreach ($requiredSymbol in $requiredSymbols) {
-    $exported = if ($isWindowsTarget) {
+    $exported = if ($isWindowsTarget -or $isMacOsTarget) {
         $exports -contains $requiredSymbol
     }
     else {

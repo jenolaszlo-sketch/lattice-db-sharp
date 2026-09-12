@@ -120,8 +120,50 @@ jobs:
           path: native/staging/win-x64/
           if-no-files-found: error
 
+  native-osx-arm64:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Verify pinned upstream contract
+        shell: pwsh
+        run: ./eng/Verify-UpstreamManifest.ps1 -VerifyRemote
+      - name: Install verified Zig toolchain
+        id: zig
+        shell: pwsh
+        run: |
+          $directory = ./eng/Install-Zig.ps1 -RuntimeIdentifier osx-arm64
+          "directory=$directory" >> $env:GITHUB_OUTPUT
+      - name: Build and inspect pinned native library
+        id: native
+        shell: pwsh
+        run: |
+          $library = ./eng/Build-Native.ps1 `
+            -RuntimeIdentifier osx-arm64 `
+            -ZigDirectory '${{ steps.zig.outputs.directory }}'
+          "library=$library" >> $env:GITHUB_OUTPUT
+      - name: Run native compatibility tests
+        shell: pwsh
+        env:
+          LATTICEDBSHARP_NATIVE_LIBRARY: ${{ steps.native.outputs.library }}
+          LATTICEDBSHARP_ABI_MANIFEST: ${{ github.workspace }}/native/staging/osx-arm64/abi.json
+        run: >-
+          dotnet test tests/LatticeDbSharp.IntegrationTests/LatticeDbSharp.IntegrationTests.csproj
+          --configuration Release
+          -p:EnableNativeTests=true
+      - uses: actions/upload-artifact@v6
+        with:
+          name: native-osx-arm64-evidence
+          path: native/staging/osx-arm64/
+          if-no-files-found: error
+
   pack:
-    needs: [native-linux-x64, native-windows-x64]
+    needs: [native-linux-x64, native-windows-x64, native-osx-arm64]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -139,6 +181,10 @@ jobs:
         with:
           name: native-windows-x64-evidence
           path: native/staging/win-x64
+      - uses: actions/download-artifact@v6
+        with:
+          name: native-osx-arm64-evidence
+          path: native/staging/osx-arm64
       - name: Verify pinned upstream contract
         shell: pwsh
         run: ./eng/Verify-UpstreamManifest.ps1 -VerifyRemote
@@ -162,7 +208,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2025, ubuntu-24.04]
+        os: [windows-2025, ubuntu-24.04, macos-15]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:

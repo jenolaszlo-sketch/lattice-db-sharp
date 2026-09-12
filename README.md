@@ -40,17 +40,20 @@ native diagnostics, the first deliberately small public lifecycle slice now
 opens file or memory databases, creates explicit read/write transactions, and
 proves node/edge creation, commit, rollback, single-writer behavior, finalizer
 cleanup, close/reopen persistence, cross-process locking, and hard-kill recovery
-on Linux x64 and Windows x64. The first-preview release gates are complete.
+on Linux x64, Windows x64, and macOS ARM64. The first-preview release gates are
+complete.
 
 The upstream baseline is pinned to LatticeDB v0.15.0, commit
 9800159e22e200f2b6888c7c6be1810adb695506. Its exact public header and a
 machine-readable capability matrix are archived and hash-verified in CI. Native
 assets are built through a pinned, traceable process from that exact base plus a small, disclosed,
 hash-verified durable-recovery patch carried in this repository. The staging and
-package validation carry verified Linux x64 and Windows x64 runtimes with their
-build, patch, and ABI evidence. All 22 expanded native tests pass on each
-platform. Other runtime identifiers fail with an actionable diagnostic rather
-than loading an arbitrary system library.
+package validation carry verified Linux x64, Windows x64, and macOS ARM64
+runtimes with their build, patch, and ABI evidence. All 22 expanded native
+tests pass on each platform. Other runtime identifiers fail with an actionable
+diagnostic rather than loading an arbitrary system library. The macOS asset is
+built natively on the macOS CI runner and ad-hoc code-signed so its pages map
+on Apple Silicon.
 
 ## Why it is interesting
 
@@ -83,7 +86,7 @@ and generic database abstractions are non-goals.
 
 ## Quick start
 
-The first preview contains verified Linux x64 and Windows x64 native assets:
+The first preview contains verified Linux x64, Windows x64, and macOS ARM64 native assets:
 
 ```shell
 dotnet add package LatticeDbSharp --prerelease
@@ -124,10 +127,10 @@ The managed scaffold requires the .NET 10 SDK and targets .NET 8:
     dotnet test tests/LatticeDbSharp.Tests/LatticeDbSharp.Tests.csproj
 
 Native integration tests are skipped by default for managed-only development.
-The Linux x64 and Windows x64 CI gates build the exact pinned base plus the
-verified patch set, check ABI evidence, and enable native tests against the
-generated libraries. Additional platforms will only be advertised after their
-own lifecycle, recovery, locking, and cleanup gates pass.
+The Linux x64, Windows x64, and macOS ARM64 CI gates build the exact pinned
+base plus the verified patch set, check ABI evidence, and enable native tests
+against the generated libraries. Additional platforms will only be advertised
+after their own lifecycle, recovery, locking, and cleanup gates pass.
 
 ## Documentation
 

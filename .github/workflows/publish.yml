@@ -94,8 +94,50 @@ jobs:
           path: native/staging/win-x64/
           if-no-files-found: error
 
+  native-osx-arm64:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Verify pinned upstream contract
+        shell: pwsh
+        run: ./eng/Verify-UpstreamManifest.ps1 -VerifyRemote
+      - name: Install verified Zig toolchain
+        id: zig
+        shell: pwsh
+        run: |
+          $directory = ./eng/Install-Zig.ps1 -RuntimeIdentifier osx-arm64
+          "directory=$directory" >> $env:GITHUB_OUTPUT
+      - name: Build verified macOS ARM64 native asset
+        id: native
+        shell: pwsh
+        run: |
+          $library = ./eng/Build-Native.ps1 `
+            -RuntimeIdentifier osx-arm64 `
+            -ZigDirectory '${{ steps.zig.outputs.directory }}'
+          "library=$library" >> $env:GITHUB_OUTPUT
+      - name: Run macOS ARM64 native integration tests
+        shell: pwsh
+        env:
+          LATTICEDBSHARP_NATIVE_LIBRARY: ${{ steps.native.outputs.library }}
+          LATTICEDBSHARP_ABI_MANIFEST: ${{ github.workspace }}/native/staging/osx-arm64/abi.json
+        run: >-
+          dotnet test tests/LatticeDbSharp.IntegrationTests/LatticeDbSharp.IntegrationTests.csproj
+          --configuration Release
+          -p:EnableNativeTests=true
+      - uses: actions/upload-artifact@v6
+        with:
+          name: native-osx-arm64-evidence
+          path: native/staging/osx-arm64/
+          if-no-files-found: error
+
   pack:
-    needs: [native-linux-x64, native-windows-x64]
+    needs: [native-linux-x64, native-windows-x64, native-osx-arm64]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -112,6 +154,10 @@ jobs:
         with:
           name: native-windows-x64-evidence
           path: native/staging/win-x64
+      - uses: actions/download-artifact@v6
+        with:
+          name: native-osx-arm64-evidence
+          path: native/staging/osx-arm64
       - uses: actions/download-artifact@v6
         with:
           name: native-linux-x64-evidence
@@ -194,8 +240,27 @@ jobs:
           $package = (Get-ChildItem artifacts/LatticeDbSharp.*.nupkg).FullName
           ./eng/Test-NuGetConsumer.ps1 -PackagePath $package
 
+  package-smoke-osx:
+    needs: pack
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+      - uses: actions/download-artifact@v6
+        with:
+          name: nuget-packages
+          path: artifacts
+      - name: Smoke-test package on macOS ARM64
+        shell: pwsh
+        run: |
+          $package = (Get-ChildItem artifacts/LatticeDbSharp.*.nupkg).FullName
+          ./eng/Test-NuGetConsumer.ps1 -PackagePath $package
+
   publish:
-    needs: [pack, package-smoke-linux, package-smoke-windows]
+    needs: [pack, package-smoke-linux, package-smoke-windows, package-smoke-osx]
     runs-on: ubuntu-latest
     permissions:
       id-token: write

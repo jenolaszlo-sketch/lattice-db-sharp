@@ -16,11 +16,13 @@ commits and repairs a physically incomplete final WAL frame without accepting
 checksum or mid-log corruption. Builds apply it only in an isolated temporary
 checkout and record its identity in each native asset manifest.
 
-The Linux x64 and Windows x64 builds are reproduced, ABI/lifecycle-tested, and
-packaged with generated content-hash manifests. Database, transaction, query,
-result, and recursive-value lifetimes are covered by the native gate. macOS
-ARM64 is the next runtime candidate; every runtime identifier must independently
-pass the same gates before its asset is added to NuGet.
+The Linux x64, Windows x64, and macOS ARM64 builds are reproduced,
+ABI/lifecycle-tested, and packaged with generated content-hash manifests.
+Database, transaction, query, result, and recursive-value lifetimes are covered
+by the native gate. macOS ARM64 builds natively on the macOS CI runner (no
+cross-compilation) and is ad-hoc code-signed so the sealed Apple Silicon
+code pages map at load. Every runtime identifier must independently pass the
+same gates before its asset is added to NuGet.
 
 Generated and staged native outputs belong under ignored native/build and
 native/staging directories. Upstream source remains separately licensed.

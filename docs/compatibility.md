@@ -8,7 +8,7 @@ Initial upstream baseline:
 
 | Component | Version |
 | --- | --- |
-| LatticeDbSharp | 0.1.1 |
+| LatticeDbSharp | 0.2.0 |
 | LatticeDB | v0.15.0 |
 | LatticeDB commit | 9800159e22e200f2b6888c7c6be1810adb695506 |
 | Zig toolchain | 0.16.0 |

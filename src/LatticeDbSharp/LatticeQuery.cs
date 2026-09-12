@@ -56,6 +56,42 @@ public sealed class LatticeQuery : IDisposable
         }
     }
 
+    /// <summary>Binds a vector parameter for similarity queries.</summary>
+    public void BindVector(string name, ReadOnlyMemory<float> vector)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        if (name.Contains('\0', StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Parameter name cannot contain a null character.", nameof(name));
+        }
+
+        NativeText.Validate(name, nameof(name));
+        if (vector.Length == 0)
+        {
+            throw new ArgumentException("A vector must contain at least one dimension.", nameof(vector));
+        }
+
+        var values = vector.ToArray();
+        var pinned = GCHandle.Alloc(values, GCHandleType.Pinned);
+        try
+        {
+            lock (gate)
+            {
+                EnsureActive();
+                var error = NativeMethods.BindQueryVector(
+                    handle.DangerousGetHandle(),
+                    name,
+                    pinned.AddrOfPinnedObject(),
+                    checked((uint)values.Length));
+                NativeError.ThrowIfFailed(error, "query/bind-vector");
+            }
+        }
+        finally
+        {
+            pinned.Free();
+        }
+    }
+
     /// <summary>Executes this query inside an active transaction.</summary>
     public LatticeQueryResult Execute(LatticeTransaction transaction)
     {

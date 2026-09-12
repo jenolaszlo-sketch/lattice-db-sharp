@@ -221,6 +221,140 @@ public sealed class LatticeTransaction : IDisposable
         }
     }
 
+    /// <summary>Returns every node id carrying a label in this snapshot. Unknown labels yield an empty list.</summary>
+    public IReadOnlyList<LatticeNodeId> GetNodesByLabel(string label)
+    {
+        lock (gate)
+        {
+            EnsureActive();
+            ArgumentException.ThrowIfNullOrWhiteSpace(label);
+            ValidateNativeString(label, nameof(label));
+            var error = NativeMethods.GetNodesByLabelTransaction(
+                handle.DangerousGetHandle(),
+                label,
+                (nuint)NativeText.GetByteCount(label, nameof(label)),
+                out var ids,
+                out var count);
+            NativeError.ThrowIfFailed(error, "node/list-by-label");
+            try
+            {
+                return NativeCollections.ReadNodeIds(ids, count);
+            }
+            finally
+            {
+                if (ids != nint.Zero)
+                {
+                    NativeMethods.FreeNodeIds(ids, count);
+                }
+            }
+        }
+    }
+
+    /// <summary>Returns every node id visible in this snapshot.</summary>
+    public IReadOnlyList<LatticeNodeId> GetAllNodes()
+    {
+        lock (gate)
+        {
+            EnsureActive();
+            var error = NativeMethods.GetAllNodesTransaction(
+                handle.DangerousGetHandle(),
+                out var ids,
+                out var count);
+            NativeError.ThrowIfFailed(error, "node/list-all");
+            try
+            {
+                return NativeCollections.ReadNodeIds(ids, count);
+            }
+            finally
+            {
+                if (ids != nint.Zero)
+                {
+                    NativeMethods.FreeNodeIds(ids, count);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Finds visible node ids through an explicit label/property equality
+    /// index. Fails when no such index exists rather than scanning.
+    /// <paramref name="limit"/> must be positive.
+    /// </summary>
+    public IReadOnlyList<LatticeNodeId> FindNodesByLabelProperty(
+        string label, string property, LatticeValue value, int limit = 10)
+    {
+        lock (gate)
+        {
+            EnsureActive();
+            ArgumentException.ThrowIfNullOrWhiteSpace(label);
+            ArgumentException.ThrowIfNullOrWhiteSpace(property);
+            ValidateNativeString(label, nameof(label));
+            ValidateNativeString(property, nameof(property));
+            using var nativeValue = new NativeValueBuilder(value);
+            var root = nativeValue.Root;
+            var error = NativeMethods.FindNodesByLabelProperty(
+                handle.DangerousGetHandle(),
+                label,
+                property,
+                in root,
+                ValidatePositiveLimit(limit),
+                out var ids,
+                out var count);
+            NativeError.ThrowIfFailed(error, "index/find-nodes");
+            try
+            {
+                return NativeCollections.ReadNodeIds(ids, count);
+            }
+            finally
+            {
+                if (ids != nint.Zero)
+                {
+                    NativeMethods.FreeNodeIds(ids, count);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Finds visible edge ids through an explicit type/property equality
+    /// index. Fails when no such index exists rather than scanning.
+    /// <paramref name="limit"/> must be positive.
+    /// </summary>
+    public IReadOnlyList<LatticeEdgeId> FindEdgesByTypeProperty(
+        string edgeType, string property, LatticeValue value, int limit = 10)
+    {
+        lock (gate)
+        {
+            EnsureActive();
+            ArgumentException.ThrowIfNullOrWhiteSpace(edgeType);
+            ArgumentException.ThrowIfNullOrWhiteSpace(property);
+            ValidateNativeString(edgeType, nameof(edgeType));
+            ValidateNativeString(property, nameof(property));
+            using var nativeValue = new NativeValueBuilder(value);
+            var root = nativeValue.Root;
+            var error = NativeMethods.FindEdgesByTypeProperty(
+                handle.DangerousGetHandle(),
+                edgeType,
+                property,
+                in root,
+                ValidatePositiveLimit(limit),
+                out var ids,
+                out var count);
+            NativeError.ThrowIfFailed(error, "index/find-edges");
+            try
+            {
+                return NativeCollections.ReadEdgeIds(ids, count);
+            }
+            finally
+            {
+                if (ids != nint.Zero)
+                {
+                    NativeMethods.FreeEdgeIds(ids, count);
+                }
+            }
+        }
+    }
+
     /// <summary>Gets whether a node is visible in this transaction's snapshot.</summary>
     public bool NodeExists(LatticeNodeId nodeId)
     {
@@ -367,6 +501,233 @@ public sealed class LatticeTransaction : IDisposable
     public IReadOnlyList<LatticeEdgeInfo> GetIncomingEdges(LatticeNodeId nodeId, string edgeType, int limit = 0) =>
         ReadEdges(outgoing: false, nodeId, edgeType, ValidateLimit(limit));
 
+    /// <summary>
+    /// Creates multiple nodes with vectors in one call. On partial failure
+    /// some nodes may exist; roll the transaction back and retry.
+    /// </summary>
+    public IReadOnlyList<LatticeNodeId> BatchInsertNodes(IReadOnlyList<LatticeNodeVector> nodes)
+    {
+        ArgumentNullException.ThrowIfNull(nodes);
+        if (nodes.Count == 0)
+        {
+            return [];
+        }
+
+        lock (gate)
+        {
+            EnsureActive();
+            EnsureWritable();
+            foreach (var node in nodes)
+            {
+                ArgumentNullException.ThrowIfNull(node);
+                ValidateNativeString(node.Label, nameof(nodes));
+                if (node.Vector.Length == 0)
+                {
+                    throw new ArgumentException("Batch vectors must contain at least one dimension.", nameof(nodes));
+                }
+            }
+
+            var structSize = Marshal.SizeOf<NativeNodeWithVector>();
+            var specs = Marshal.AllocHGlobal(checked(nodes.Count * structSize));
+            var idsOut = Marshal.AllocHGlobal(checked(nodes.Count * sizeof(ulong)));
+            var labels = new List<nint>(nodes.Count);
+            var pinned = new List<GCHandle>(nodes.Count);
+            try
+            {
+                for (var index = 0; index < nodes.Count; index++)
+                {
+                    var values = nodes[index].Vector.ToArray();
+                    var handle = GCHandle.Alloc(values, GCHandleType.Pinned);
+                    pinned.Add(handle);
+                    var label = nint.Zero;
+                    if (nodes[index].Label is not null)
+                    {
+                        var labelBytes = NativeText.Encode(nodes[index].Label!, nameof(nodes));
+                        label = Marshal.AllocHGlobal(labelBytes.Length + 1);
+                        Marshal.Copy(labelBytes, 0, label, labelBytes.Length);
+                        Marshal.WriteByte(label + labelBytes.Length, 0);
+                        labels.Add(label);
+                    }
+
+                    Marshal.StructureToPtr(
+                        new NativeNodeWithVector
+                        {
+                            Label = label,
+                            Vector = handle.AddrOfPinnedObject(),
+                            Dimensions = checked((uint)values.Length)
+                        },
+                        specs + index * structSize,
+                        false);
+                }
+
+                var error = NativeMethods.BatchInsert(
+                    handle.DangerousGetHandle(),
+                    specs,
+                    checked((uint)nodes.Count),
+                    idsOut,
+                    out var created);
+                NativeError.ThrowIfFailed(error, "node/batch-insert");
+                var createdIds = new long[checked((int)created)];
+                Marshal.Copy(idsOut, createdIds, 0, createdIds.Length);
+                return createdIds.Select(id => new LatticeNodeId((ulong)id)).ToArray();
+            }
+            finally
+            {
+                foreach (var label in labels)
+                {
+                    Marshal.FreeHGlobal(label);
+                }
+
+                foreach (var handle in pinned)
+                {
+                    handle.Free();
+                }
+
+                Marshal.FreeHGlobal(specs);
+                Marshal.FreeHGlobal(idsOut);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Searches vectors visible in this snapshot, returning up to
+    /// <paramref name="count"/> hits ordered by increasing distance.
+    /// </summary>
+    public IReadOnlyList<LatticeVectorHit> VectorSearch(
+        ReadOnlyMemory<float> query, int count, ushort efSearch = 0)
+    {
+        if (query.Length == 0)
+        {
+            throw new ArgumentException("A query vector must contain at least one dimension.", nameof(query));
+        }
+
+        if (count < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(count), "The result count must be positive.");
+        }
+
+        var values = query.ToArray();
+        var pinned = GCHandle.Alloc(values, GCHandleType.Pinned);
+        try
+        {
+            lock (gate)
+            {
+                EnsureActive();
+                var error = NativeMethods.VectorSearchTransaction(
+                    handle.DangerousGetHandle(),
+                    pinned.AddrOfPinnedObject(),
+                    checked((uint)values.Length),
+                    checked((uint)count),
+                    efSearch,
+                    out var result);
+                NativeError.ThrowIfFailed(error, "vector/search");
+                try
+                {
+                    return NativeCollections.ReadVectorHits(result);
+                }
+                finally
+                {
+                    NativeMethods.FreeVectorResult(result);
+                }
+            }
+        }
+        finally
+        {
+            pinned.Free();
+        }
+    }
+
+    /// <summary>
+    /// Searches one declared node index with BM25 scoring inside this
+    /// snapshot. <paramref name="limit"/> must be positive.
+    /// </summary>
+    public IReadOnlyList<LatticeFtsHit> FtsSearch(string label, string property, string query, int limit)
+    {
+        lock (gate)
+        {
+            EnsureActive();
+            ArgumentException.ThrowIfNullOrWhiteSpace(label);
+            ArgumentException.ThrowIfNullOrWhiteSpace(property);
+            ArgumentException.ThrowIfNullOrWhiteSpace(query);
+            NativeText.Validate(query, nameof(query));
+            if (limit <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(limit), "The result limit must be positive.");
+            }
+
+            var error = NativeMethods.FtsSearchTransaction(
+                handle.DangerousGetHandle(),
+                label,
+                property,
+                query,
+                (nuint)NativeText.GetByteCount(query, nameof(query)),
+                checked((uint)limit),
+                out var result);
+            NativeError.ThrowIfFailed(error, "fts/search");
+            try
+            {
+                return NativeCollections.ReadFtsHits(result);
+            }
+            finally
+            {
+                NativeMethods.FreeFtsResult(result);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Searches one declared node index with typo tolerance inside this
+    /// snapshot. Zero <paramref name="maxDistance"/> and
+    /// <paramref name="minTermLength"/> select engine defaults.
+    /// <paramref name="limit"/> must be positive.
+    /// </summary>
+    public IReadOnlyList<LatticeFtsHit> FtsSearchFuzzy(
+        string label, string property, string query, int limit, int maxDistance = 0, int minTermLength = 0)
+    {
+        lock (gate)
+        {
+            EnsureActive();
+            ArgumentException.ThrowIfNullOrWhiteSpace(label);
+            ArgumentException.ThrowIfNullOrWhiteSpace(property);
+            ArgumentException.ThrowIfNullOrWhiteSpace(query);
+            NativeText.Validate(query, nameof(query));
+            if (limit <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(limit), "The result limit must be positive.");
+            }
+
+            if (maxDistance < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maxDistance));
+            }
+
+            if (minTermLength < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(minTermLength));
+            }
+
+            var error = NativeMethods.FtsSearchFuzzyTransaction(
+                handle.DangerousGetHandle(),
+                label,
+                property,
+                query,
+                (nuint)NativeText.GetByteCount(query, nameof(query)),
+                checked((uint)limit),
+                checked((uint)maxDistance),
+                checked((uint)minTermLength),
+                out var result);
+            NativeError.ThrowIfFailed(error, "fts/search-fuzzy");
+            try
+            {
+                return NativeCollections.ReadFtsHits(result);
+            }
+            finally
+            {
+                NativeMethods.FreeFtsResult(result);
+            }
+        }
+    }
+
     /// <summary>Commits the transaction. Recoverable failures leave it available for retry or rollback.</summary>
     public void Commit()
     {
@@ -501,6 +862,16 @@ public sealed class LatticeTransaction : IDisposable
         return checked((uint)limit);
     }
 
+    private static uint ValidatePositiveLimit(int limit)
+    {
+        if (limit <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(limit), "The find limit must be positive.");
+        }
+
+        return checked((uint)limit);
+    }
+
     private IReadOnlyList<LatticeEdgeInfo> ReadEdges(bool outgoing, LatticeNodeId nodeId, string? edgeType, uint limit)
     {
         lock (gate)
@@ -561,6 +932,14 @@ public sealed class LatticeTransaction : IDisposable
         }
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeNodeWithVector
+    {
+        public nint Label;
+        public nint Vector;
+        public uint Dimensions;
+    }
+
     internal T WithActiveHandle<T>(Func<nint, T> action)
     {
         ArgumentNullException.ThrowIfNull(action);
@@ -577,6 +956,15 @@ public readonly record struct LatticeNodeId(ulong Value);
 
 /// <summary>A stable native edge identifier.</summary>
 public readonly record struct LatticeEdgeId(ulong Value);
+
+/// <summary>A label plus vector for one batch-inserted node.</summary>
+public sealed record LatticeNodeVector(string? Label, ReadOnlyMemory<float> Vector);
+
+/// <summary>A detached vector-search hit.</summary>
+public sealed record LatticeVectorHit(LatticeNodeId NodeId, float Distance);
+
+/// <summary>A detached full-text search hit with its BM25 score.</summary>
+public sealed record LatticeFtsHit(LatticeNodeId NodeId, float Score);
 
 /// <summary>A detached edge observed by traversal.</summary>
 public sealed record LatticeEdgeInfo(

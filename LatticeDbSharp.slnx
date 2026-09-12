@@ -10,4 +10,7 @@
     <Project Path="samples/LatticeDbSharp.QuickStart/LatticeDbSharp.QuickStart.csproj" />
     <Project Path="samples/LatticeDbSharp.AotSmoke/LatticeDbSharp.AotSmoke.csproj" />
   </Folder>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/LatticeDbSharp.Benchmarks/LatticeDbSharp.Benchmarks.csproj" />
+  </Folder>
 </Solution>

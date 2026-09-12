@@ -1,1 +1,69 @@
 #nullable enable
+LatticeDbSharp.LatticeDatabase.GetNodesByLabel(string! label) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeNodeId>!
+LatticeDbSharp.LatticeDatabase.Serialize() -> byte[]!
+LatticeDbSharp.LatticeTransaction.GetAllNodes() -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeNodeId>!
+LatticeDbSharp.LatticeTransaction.GetNodesByLabel(string! label) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeNodeId>!
+static LatticeDbSharp.LatticeDatabase.Deserialize(byte[]! data, LatticeDbSharp.LatticeDatabaseOptions? options = null) -> LatticeDbSharp.LatticeDatabase!
+LatticeDbSharp.LatticeDatabase.CreateEdgePropertyIndex(string! edgeType, string! property) -> void
+LatticeDbSharp.LatticeDatabase.CreateNodePropertyIndex(string! label, string! property) -> void
+LatticeDbSharp.LatticeDatabase.DropEdgePropertyIndex(string! edgeType, string! property) -> void
+LatticeDbSharp.LatticeDatabase.DropNodePropertyIndex(string! label, string! property) -> void
+LatticeDbSharp.LatticeTransaction.FindEdgesByTypeProperty(string! edgeType, string! property, LatticeDbSharp.LatticeValue value, int limit = 10) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeEdgeId>!
+LatticeDbSharp.LatticeTransaction.FindNodesByLabelProperty(string! label, string! property, LatticeDbSharp.LatticeValue value, int limit = 10) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeNodeId>!
+
+LatticeDbSharp.LatticeDatabase.VectorSearch(System.ReadOnlyMemory<float> query, int count, ushort efSearch = 0) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeVectorHit!>!
+LatticeDbSharp.LatticeNodeVector
+LatticeDbSharp.LatticeNodeVector.<Clone>$() -> LatticeDbSharp.LatticeNodeVector!
+LatticeDbSharp.LatticeNodeVector.Deconstruct(out string? Label, out System.ReadOnlyMemory<float> Vector) -> void
+LatticeDbSharp.LatticeNodeVector.Equals(LatticeDbSharp.LatticeNodeVector? other) -> bool
+LatticeDbSharp.LatticeNodeVector.Label.get -> string?
+LatticeDbSharp.LatticeNodeVector.Label.init -> void
+LatticeDbSharp.LatticeNodeVector.LatticeNodeVector(string? Label, System.ReadOnlyMemory<float> Vector) -> void
+LatticeDbSharp.LatticeNodeVector.Vector.get -> System.ReadOnlyMemory<float>
+LatticeDbSharp.LatticeNodeVector.Vector.init -> void
+LatticeDbSharp.LatticeQuery.BindVector(string! name, System.ReadOnlyMemory<float> vector) -> void
+LatticeDbSharp.LatticeTransaction.BatchInsertNodes(System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeNodeVector!>! nodes) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeNodeId>!
+LatticeDbSharp.LatticeTransaction.VectorSearch(System.ReadOnlyMemory<float> query, int count, ushort efSearch = 0) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeVectorHit!>!
+LatticeDbSharp.LatticeVectorHit
+LatticeDbSharp.LatticeVectorHit.<Clone>$() -> LatticeDbSharp.LatticeVectorHit!
+LatticeDbSharp.LatticeVectorHit.Deconstruct(out LatticeDbSharp.LatticeNodeId NodeId, out float Distance) -> void
+LatticeDbSharp.LatticeVectorHit.Distance.get -> float
+LatticeDbSharp.LatticeVectorHit.Distance.init -> void
+LatticeDbSharp.LatticeVectorHit.Equals(LatticeDbSharp.LatticeVectorHit? other) -> bool
+LatticeDbSharp.LatticeVectorHit.LatticeVectorHit(LatticeDbSharp.LatticeNodeId NodeId, float Distance) -> void
+LatticeDbSharp.LatticeVectorHit.NodeId.get -> LatticeDbSharp.LatticeNodeId
+LatticeDbSharp.LatticeVectorHit.NodeId.init -> void
+override LatticeDbSharp.LatticeNodeVector.Equals(object? obj) -> bool
+override LatticeDbSharp.LatticeNodeVector.GetHashCode() -> int
+override LatticeDbSharp.LatticeNodeVector.ToString() -> string!
+override LatticeDbSharp.LatticeVectorHit.Equals(object? obj) -> bool
+override LatticeDbSharp.LatticeVectorHit.GetHashCode() -> int
+override LatticeDbSharp.LatticeVectorHit.ToString() -> string!
+static LatticeDbSharp.LatticeNodeVector.operator !=(LatticeDbSharp.LatticeNodeVector? left, LatticeDbSharp.LatticeNodeVector? right) -> bool
+static LatticeDbSharp.LatticeNodeVector.operator ==(LatticeDbSharp.LatticeNodeVector? left, LatticeDbSharp.LatticeNodeVector? right) -> bool
+static LatticeDbSharp.LatticeVectorHit.operator !=(LatticeDbSharp.LatticeVectorHit? left, LatticeDbSharp.LatticeVectorHit? right) -> bool
+static LatticeDbSharp.LatticeVectorHit.operator ==(LatticeDbSharp.LatticeVectorHit? left, LatticeDbSharp.LatticeVectorHit? right) -> bool
+LatticeDbSharp.LatticeDatabase.CreateEdgeFtsIndex(string! edgeType, string! property) -> void
+LatticeDbSharp.LatticeDatabase.CreateNodeFtsIndex(string! label, string! property) -> void
+LatticeDbSharp.LatticeDatabase.DropEdgeFtsIndex(string! edgeType, string! property) -> void
+LatticeDbSharp.LatticeDatabase.DropNodeFtsIndex(string! label, string! property) -> void
+LatticeDbSharp.LatticeDatabase.EdgeFtsIndexExists(string! edgeType, string! property) -> bool
+LatticeDbSharp.LatticeDatabase.FtsSearch(string! label, string! property, string! query, int limit) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeFtsHit!>!
+LatticeDbSharp.LatticeDatabase.FtsSearchFuzzy(string! label, string! property, string! query, int limit, int maxDistance = 0, int minTermLength = 0) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeFtsHit!>!
+LatticeDbSharp.LatticeDatabase.NodeFtsIndexExists(string! label, string! property) -> bool
+LatticeDbSharp.LatticeFtsHit
+LatticeDbSharp.LatticeFtsHit.<Clone>$() -> LatticeDbSharp.LatticeFtsHit!
+LatticeDbSharp.LatticeFtsHit.Deconstruct(out LatticeDbSharp.LatticeNodeId NodeId, out float Score) -> void
+LatticeDbSharp.LatticeFtsHit.Equals(LatticeDbSharp.LatticeFtsHit? other) -> bool
+LatticeDbSharp.LatticeFtsHit.LatticeFtsHit(LatticeDbSharp.LatticeNodeId NodeId, float Score) -> void
+LatticeDbSharp.LatticeFtsHit.NodeId.get -> LatticeDbSharp.LatticeNodeId
+LatticeDbSharp.LatticeFtsHit.NodeId.init -> void
+LatticeDbSharp.LatticeFtsHit.Score.get -> float
+LatticeDbSharp.LatticeFtsHit.Score.init -> void
+LatticeDbSharp.LatticeTransaction.FtsSearch(string! label, string! property, string! query, int limit) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeFtsHit!>!
+LatticeDbSharp.LatticeTransaction.FtsSearchFuzzy(string! label, string! property, string! query, int limit, int maxDistance = 0, int minTermLength = 0) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeFtsHit!>!
+override LatticeDbSharp.LatticeFtsHit.Equals(object? obj) -> bool
+override LatticeDbSharp.LatticeFtsHit.GetHashCode() -> int
+override LatticeDbSharp.LatticeFtsHit.ToString() -> string!
+static LatticeDbSharp.LatticeFtsHit.operator !=(LatticeDbSharp.LatticeFtsHit? left, LatticeDbSharp.LatticeFtsHit? right) -> bool
+static LatticeDbSharp.LatticeFtsHit.operator ==(LatticeDbSharp.LatticeFtsHit? left, LatticeDbSharp.LatticeFtsHit? right) -> bool

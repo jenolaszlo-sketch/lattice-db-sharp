@@ -8,3 +8,4 @@ artifacts/
 TestResults/
 native/build/
 native/staging/
+BenchmarkDotNet.Artifacts/

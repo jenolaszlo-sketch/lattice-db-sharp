@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using LatticeDbSharp.Interop;
 
 namespace LatticeDbSharp;
@@ -84,6 +85,463 @@ public sealed class LatticeDatabase : IDisposable
     public static LatticeDatabase OpenMemory(LatticeDatabaseOptions? options = null)
     {
         return Open(":memory:", options);
+    }
+
+    /// <summary>Returns every node id currently carrying a label. Unknown labels yield an empty list.</summary>
+    public IReadOnlyList<LatticeNodeId> GetNodesByLabel(string label)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(label);
+        NativeText.Validate(label, nameof(label));
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(closed, this);
+            if (closeStarted)
+            {
+                throw new InvalidOperationException("Database close has started.");
+            }
+
+            var error = NativeMethods.GetNodesByLabel(
+                handle.DangerousGetHandle(),
+                label,
+                (nuint)NativeText.GetByteCount(label, nameof(label)),
+                out var ids,
+                out var count);
+            NativeError.ThrowIfFailed(error, "node/list-by-label");
+            try
+            {
+                return NativeCollections.ReadNodeIds(ids, count);
+            }
+            finally
+            {
+                if (ids != nint.Zero)
+                {
+                    NativeMethods.FreeNodeIds(ids, count);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Captures the whole database as bytes, folding pending writes first.
+    /// Fails while a transaction is open. Write the bytes anywhere; they open
+    /// with <see cref="Deserialize(byte[], LatticeDatabaseOptions?)"/>.
+    /// </summary>
+    public byte[] Serialize()
+    {
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(closed, this);
+            if (closeStarted)
+            {
+                throw new InvalidOperationException("Database close has started.");
+            }
+
+            var error = NativeMethods.SerializeDatabase(handle.DangerousGetHandle(), out var bytes, out var length);
+            NativeError.ThrowIfFailed(error, "database/serialize");
+            try
+            {
+                if (bytes == nint.Zero)
+                {
+                    throw new LatticeException("database/serialize", NativeErrorCode.Error);
+                }
+
+                var count = checked((int)length);
+                var buffer = new byte[count];
+                Marshal.Copy(bytes, buffer, 0, count);
+                return buffer;
+            }
+            finally
+            {
+                if (bytes != nint.Zero)
+                {
+                    NativeMethods.FreeBytes(bytes, length);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Opens an independent database from bytes produced by <see cref="Serialize"/>.
+    /// The bytes are copied and may be released as soon as this returns.
+    /// </summary>
+    public static LatticeDatabase Deserialize(byte[] data, LatticeDatabaseOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        if (data.Length == 0)
+        {
+            throw new ArgumentException("Serialized database bytes cannot be empty.", nameof(data));
+        }
+
+        var effectiveOptions = options ?? new LatticeDatabaseOptions();
+        var nativeOptions = effectiveOptions.ToNative();
+        _ = LatticeNative.Version;
+        NativeErrorCode error;
+        nint nativeHandle;
+        unsafe
+        {
+            fixed (byte* pointer = data)
+            {
+                try
+                {
+                    error = NativeMethods.DeserializeDatabase((nint)pointer, (nuint)data.Length, in nativeOptions, out nativeHandle);
+                }
+                catch (Exception exception) when (
+                    exception is DllNotFoundException or
+                    BadImageFormatException or
+                    EntryPointNotFoundException)
+                {
+                    throw new LatticeNativeLoadException(
+                        $"Unable to open LatticeDB {LatticeNative.PinnedVersion}. " +
+                        $"{NativeLibraryResolver.DescribeSearch()}.",
+                        exception);
+                }
+            }
+        }
+        NativeError.ThrowIfFailed(error, "database/deserialize");
+        if (nativeHandle == nint.Zero)
+        {
+            throw new LatticeException("database/deserialize", NativeErrorCode.Error);
+        }
+
+        return new LatticeDatabase("<deserialized>", new SafeLatticeDatabaseHandle(nativeHandle));
+    }
+
+    /// <summary>
+    /// Creates an equality index for a node label/property pair, scanning
+    /// existing matching nodes. Fails while a write transaction is active.
+    /// </summary>
+    public void CreateNodePropertyIndex(string label, string property)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(label);
+        ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(closed, this);
+            if (closeStarted)
+            {
+                throw new InvalidOperationException("Database close has started.");
+            }
+
+            var error = NativeMethods.CreateNodePropertyIndex(handle.DangerousGetHandle(), label, property);
+            NativeError.ThrowIfFailed(error, "index/create-node-property");
+        }
+    }
+
+    /// <summary>Drops an equality index for a node label/property pair.</summary>
+    public void DropNodePropertyIndex(string label, string property)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(label);
+        ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(closed, this);
+            if (closeStarted)
+            {
+                throw new InvalidOperationException("Database close has started.");
+            }
+
+            var error = NativeMethods.DropNodePropertyIndex(handle.DangerousGetHandle(), label, property);
+            NativeError.ThrowIfFailed(error, "index/drop-node-property");
+        }
+    }
+
+    /// <summary>
+    /// Creates an equality index for an edge type/property pair, scanning
+    /// existing matching edges. Fails while a write transaction is active.
+    /// </summary>
+    public void CreateEdgePropertyIndex(string edgeType, string property)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(edgeType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(closed, this);
+            if (closeStarted)
+            {
+                throw new InvalidOperationException("Database close has started.");
+            }
+
+            var error = NativeMethods.CreateEdgePropertyIndex(handle.DangerousGetHandle(), edgeType, property);
+            NativeError.ThrowIfFailed(error, "index/create-edge-property");
+        }
+    }
+
+    /// <summary>Drops an equality index for an edge type/property pair.</summary>
+    public void DropEdgePropertyIndex(string edgeType, string property)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(edgeType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(closed, this);
+            if (closeStarted)
+            {
+                throw new InvalidOperationException("Database close has started.");
+            }
+
+            var error = NativeMethods.DropEdgePropertyIndex(handle.DangerousGetHandle(), edgeType, property);
+            NativeError.ThrowIfFailed(error, "index/drop-edge-property");
+        }
+    }
+
+    /// <summary>
+    /// Searches vectors across the database, returning up to
+    /// <paramref name="count"/> hits ordered by increasing distance.
+    /// </summary>
+    public IReadOnlyList<LatticeVectorHit> VectorSearch(
+        ReadOnlyMemory<float> query, int count, ushort efSearch = 0)
+    {
+        if (query.Length == 0)
+        {
+            throw new ArgumentException("A query vector must contain at least one dimension.", nameof(query));
+        }
+
+        if (count < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(count), "The result count must be positive.");
+        }
+
+        var values = query.ToArray();
+        var pinned = GCHandle.Alloc(values, GCHandleType.Pinned);
+        try
+        {
+            lock (gate)
+            {
+                ObjectDisposedException.ThrowIf(closed, this);
+                if (closeStarted)
+                {
+                    throw new InvalidOperationException("Database close has started.");
+                }
+
+                var error = NativeMethods.VectorSearch(
+                    handle.DangerousGetHandle(),
+                    pinned.AddrOfPinnedObject(),
+                    checked((uint)values.Length),
+                    checked((uint)count),
+                    efSearch,
+                    out var result);
+                NativeError.ThrowIfFailed(error, "vector/search");
+                try
+                {
+                    return NativeCollections.ReadVectorHits(result);
+                }
+                finally
+                {
+                    NativeMethods.FreeVectorResult(result);
+                }
+            }
+        }
+        finally
+        {
+            pinned.Free();
+        }
+    }
+
+    /// <summary>Creates a full-text index over one node label/property pair of string properties.</summary>
+    public void CreateNodeFtsIndex(string label, string property)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(label);
+        ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(closed, this);
+            if (closeStarted)
+            {
+                throw new InvalidOperationException("Database close has started.");
+            }
+
+            var error = NativeMethods.CreateNodeFtsIndex(handle.DangerousGetHandle(), label, property);
+            NativeError.ThrowIfFailed(error, "index/create-node-fts");
+        }
+    }
+
+    /// <summary>Drops a full-text index over one node label/property pair.</summary>
+    public void DropNodeFtsIndex(string label, string property)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(label);
+        ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(closed, this);
+            if (closeStarted)
+            {
+                throw new InvalidOperationException("Database close has started.");
+            }
+
+            var error = NativeMethods.DropNodeFtsIndex(handle.DangerousGetHandle(), label, property);
+            NativeError.ThrowIfFailed(error, "index/drop-node-fts");
+        }
+    }
+
+    /// <summary>Gets whether a node full-text index exists.</summary>
+    public bool NodeFtsIndexExists(string label, string property)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(label);
+        ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(closed, this);
+            if (closeStarted)
+            {
+                throw new InvalidOperationException("Database close has started.");
+            }
+
+            var error = NativeMethods.NodeFtsIndexExists(handle.DangerousGetHandle(), label, property, out var exists);
+            NativeError.ThrowIfFailed(error, "index/check-node-fts");
+            return exists != 0;
+        }
+    }
+
+    /// <summary>Creates a full-text index over one edge type/property pair of string properties.</summary>
+    public void CreateEdgeFtsIndex(string edgeType, string property)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(edgeType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(closed, this);
+            if (closeStarted)
+            {
+                throw new InvalidOperationException("Database close has started.");
+            }
+
+            var error = NativeMethods.CreateEdgeFtsIndex(handle.DangerousGetHandle(), edgeType, property);
+            NativeError.ThrowIfFailed(error, "index/create-edge-fts");
+        }
+    }
+
+    /// <summary>Drops a full-text index over one edge type/property pair.</summary>
+    public void DropEdgeFtsIndex(string edgeType, string property)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(edgeType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(closed, this);
+            if (closeStarted)
+            {
+                throw new InvalidOperationException("Database close has started.");
+            }
+
+            var error = NativeMethods.DropEdgeFtsIndex(handle.DangerousGetHandle(), edgeType, property);
+            NativeError.ThrowIfFailed(error, "index/drop-edge-fts");
+        }
+    }
+
+    /// <summary>Gets whether an edge full-text index exists.</summary>
+    public bool EdgeFtsIndexExists(string edgeType, string property)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(edgeType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(closed, this);
+            if (closeStarted)
+            {
+                throw new InvalidOperationException("Database close has started.");
+            }
+
+            var error = NativeMethods.EdgeFtsIndexExists(handle.DangerousGetHandle(), edgeType, property, out var exists);
+            NativeError.ThrowIfFailed(error, "index/check-edge-fts");
+            return exists != 0;
+        }
+    }
+
+    /// <summary>
+    /// Searches one declared node index with BM25 scoring. Searching without a
+    /// declared index fails instead of returning no rows.
+    /// <paramref name="limit"/> must be positive.
+    /// </summary>
+    public IReadOnlyList<LatticeFtsHit> FtsSearch(string label, string property, string query, int limit)
+    {
+        ValidateFtsArguments(label, property, query, limit);
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(closed, this);
+            if (closeStarted)
+            {
+                throw new InvalidOperationException("Database close has started.");
+            }
+
+            var error = NativeMethods.FtsSearch(
+                handle.DangerousGetHandle(),
+                label,
+                property,
+                query,
+                (nuint)NativeText.GetByteCount(query, nameof(query)),
+                checked((uint)limit),
+                out var result);
+            NativeError.ThrowIfFailed(error, "fts/search");
+            try
+            {
+                return NativeCollections.ReadFtsHits(result);
+            }
+            finally
+            {
+                NativeMethods.FreeFtsResult(result);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Searches one declared node index with typo tolerance. Zero
+    /// <paramref name="maxDistance"/> and <paramref name="minTermLength"/>
+    /// select engine defaults. <paramref name="limit"/> must be positive.
+    /// </summary>
+    public IReadOnlyList<LatticeFtsHit> FtsSearchFuzzy(
+        string label, string property, string query, int limit, int maxDistance = 0, int minTermLength = 0)
+    {
+        ValidateFtsArguments(label, property, query, limit);
+        if (maxDistance < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxDistance));
+        }
+
+        if (minTermLength < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(minTermLength));
+        }
+
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(closed, this);
+            if (closeStarted)
+            {
+                throw new InvalidOperationException("Database close has started.");
+            }
+
+            var error = NativeMethods.FtsSearchFuzzy(
+                handle.DangerousGetHandle(),
+                label,
+                property,
+                query,
+                (nuint)NativeText.GetByteCount(query, nameof(query)),
+                checked((uint)limit),
+                checked((uint)maxDistance),
+                checked((uint)minTermLength),
+                out var result);
+            NativeError.ThrowIfFailed(error, "fts/search-fuzzy");
+            try
+            {
+                return NativeCollections.ReadFtsHits(result);
+            }
+            finally
+            {
+                NativeMethods.FreeFtsResult(result);
+            }
+        }
+    }
+
+    private static void ValidateFtsArguments(string label, string property, string query, int limit)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(label);
+        ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        ArgumentException.ThrowIfNullOrWhiteSpace(query);
+        NativeText.Validate(query, nameof(query));
+        if (limit <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(limit), "The result limit must be positive.");
+        }
     }
 
     /// <summary>Begins an explicit read-only transaction.</summary>

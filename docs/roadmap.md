@@ -89,11 +89,17 @@ executable tests without public pointers or manual native ownership.
 
 ## Phase 2 — retrieval (0.2.0)
 
-- [ ] Vector storage, search, bulk insertion, dimension validation, and result
-  ownership.
-- [ ] Per-property node/edge FTS indexes, BM25 results, and fuzzy search.
-- [ ] Property-index lifecycle and indexed lookup without silent scan fallback.
-- [ ] Retrieval correctness and wrapper-overhead benchmarks.
+- [x] Vector storage, search, bulk insertion, dimension validation, and result
+  ownership: `BatchInsertNodes`, database- and transaction-scoped top-k
+  search with detached hits, and vector query-parameter binding.
+- [x] Per-property node/edge FTS indexes, BM25 results, and fuzzy search,
+  with index-existence checks and explicit failure without a declared index.
+- [x] Property-index lifecycle and indexed lookup without silent scan
+  fallback: create/drop/exists plus indexed find with mandatory positive
+  limits (the engine rejects zero).
+- [x] Retrieval correctness and wrapper-overhead benchmarks: 29 integration
+  tests plus the `benchmarks/LatticeDbSharp.Benchmarks` harness with the
+  flat 100-to-1000 baseline in BENCHMARKS.md.
 
 Exit: graph traversal, vector similarity, and text retrieval can be combined
 through the wrapper with verified ownership and error behavior.

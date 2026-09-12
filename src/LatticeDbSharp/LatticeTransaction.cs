@@ -253,6 +253,120 @@ public sealed class LatticeTransaction : IDisposable
         }
     }
 
+    /// <summary>Deletes the typed edge between two nodes.</summary>
+    public void DeleteEdge(LatticeNodeId source, LatticeNodeId target, string edgeType)
+    {
+        lock (gate)
+        {
+            EnsureActive();
+            EnsureWritable();
+            ArgumentException.ThrowIfNullOrWhiteSpace(edgeType);
+            ValidateNativeString(edgeType, nameof(edgeType));
+            var error = NativeMethods.DeleteEdge(
+                handle.DangerousGetHandle(),
+                source.Value,
+                target.Value,
+                edgeType);
+            NativeError.ThrowIfFailed(error, "edge/delete");
+        }
+    }
+
+    /// <summary>Sets a detached property value on an edge.</summary>
+    public void SetEdgeProperty(LatticeEdgeId edgeId, string key, LatticeValue value)
+    {
+        lock (gate)
+        {
+            EnsureActive();
+            EnsureWritable();
+            ArgumentException.ThrowIfNullOrWhiteSpace(key);
+            ValidateNativeString(key, nameof(key));
+            using var nativeValue = new NativeValueBuilder(value);
+            var root = nativeValue.Root;
+            var error = NativeMethods.SetEdgeProperty(
+                handle.DangerousGetHandle(),
+                edgeId.Value,
+                key,
+                in root);
+            NativeError.ThrowIfFailed(error, "edge/set-property");
+        }
+    }
+
+    /// <summary>Gets a detached edge property value, or <see langword="false"/> when absent.</summary>
+    public bool TryGetEdgeProperty(LatticeEdgeId edgeId, string key, out LatticeValue value)
+    {
+        lock (gate)
+        {
+            EnsureActive();
+            ArgumentException.ThrowIfNullOrWhiteSpace(key);
+            ValidateNativeString(key, nameof(key));
+            var error = NativeMethods.GetEdgeProperty(
+                handle.DangerousGetHandle(),
+                edgeId.Value,
+                key,
+                out var nativeValue);
+            if (error == NativeErrorCode.NotFound)
+            {
+                value = LatticeValue.Null;
+                return false;
+            }
+
+            NativeError.ThrowIfFailed(error, "edge/get-property");
+            try
+            {
+                value = NativeValueConversion.ToManaged(nativeValue);
+                return true;
+            }
+            finally
+            {
+                NativeMethods.FreeValue(ref nativeValue);
+            }
+        }
+    }
+
+    /// <summary>Gets a detached edge property value, throwing when the key is absent.</summary>
+    public LatticeValue GetEdgeProperty(LatticeEdgeId edgeId, string key)
+    {
+        if (!TryGetEdgeProperty(edgeId, key, out var value))
+        {
+            throw new KeyNotFoundException($"Edge {edgeId.Value} has no property named '{key}'.");
+        }
+
+        return value;
+    }
+
+    /// <summary>Removes a property from an edge.</summary>
+    public void RemoveEdgeProperty(LatticeEdgeId edgeId, string key)
+    {
+        lock (gate)
+        {
+            EnsureActive();
+            EnsureWritable();
+            ArgumentException.ThrowIfNullOrWhiteSpace(key);
+            ValidateNativeString(key, nameof(key));
+            var error = NativeMethods.RemoveEdgeProperty(
+                handle.DangerousGetHandle(),
+                edgeId.Value,
+                key);
+            NativeError.ThrowIfFailed(error, "edge/remove-property");
+        }
+    }
+
+    /// <summary>Gets the detached outgoing edges visible from a node.</summary>
+    public IReadOnlyList<LatticeEdgeInfo> GetOutgoingEdges(LatticeNodeId nodeId) =>
+        ReadEdges(outgoing: true, nodeId, null, 0);
+
+    /// <summary>Gets the detached incoming edges visible to a node.</summary>
+    public IReadOnlyList<LatticeEdgeInfo> GetIncomingEdges(LatticeNodeId nodeId) =>
+        ReadEdges(outgoing: false, nodeId, null, 0);
+
+    /// <summary>Gets detached outgoing edges of one type. Zero <paramref name="limit"/> means unlimited.</summary>
+    public IReadOnlyList<LatticeEdgeInfo> GetOutgoingEdges(LatticeNodeId nodeId, string edgeType, int limit = 0) =>
+        ReadEdges(outgoing: true, nodeId, edgeType, ValidateLimit(limit));
+
+    /// <summary>Gets detached incoming edges of one type. Zero <paramref name="limit"/> means unlimited.</summary>
+    public IReadOnlyList<LatticeEdgeInfo> GetIncomingEdges(LatticeNodeId nodeId, string edgeType, int limit = 0) =>
+        ReadEdges(outgoing: false, nodeId, edgeType, ValidateLimit(limit));
+
     /// <summary>Commits the transaction. Recoverable failures leave it available for retry or rollback.</summary>
     public void Commit()
     {
@@ -377,6 +491,76 @@ public sealed class LatticeTransaction : IDisposable
         database.ReleaseChild();
     }
 
+    private static uint ValidateLimit(int limit)
+    {
+        if (limit < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(limit), "The traversal limit cannot be negative.");
+        }
+
+        return checked((uint)limit);
+    }
+
+    private IReadOnlyList<LatticeEdgeInfo> ReadEdges(bool outgoing, LatticeNodeId nodeId, string? edgeType, uint limit)
+    {
+        lock (gate)
+        {
+            EnsureActive();
+            if (edgeType is not null)
+            {
+                ArgumentException.ThrowIfNullOrWhiteSpace(edgeType);
+                ValidateNativeString(edgeType, nameof(edgeType));
+            }
+
+            var handleValue = handle.DangerousGetHandle();
+            nint result;
+            NativeErrorCode error;
+            if (edgeType is null)
+            {
+                error = outgoing
+                    ? NativeMethods.GetOutgoingEdges(handleValue, nodeId.Value, out result)
+                    : NativeMethods.GetIncomingEdges(handleValue, nodeId.Value, out result);
+            }
+            else
+            {
+                error = outgoing
+                    ? NativeMethods.GetOutgoingEdgesByType(handleValue, nodeId.Value, edgeType, limit, out result)
+                    : NativeMethods.GetIncomingEdgesByType(handleValue, nodeId.Value, edgeType, limit, out result);
+            }
+
+            NativeError.ThrowIfFailed(error, "edge/traverse");
+            try
+            {
+                var count = NativeMethods.EdgeResultCount(result);
+                var edges = new List<LatticeEdgeInfo>();
+                for (var index = 0u; index < count; index++)
+                {
+                    var idError = NativeMethods.EdgeResultGetId(result, index, out var edgeId);
+                    NativeError.ThrowIfFailed(idError, "edge/read");
+                    var getError = NativeMethods.EdgeResultGet(
+                        result,
+                        index,
+                        out var source,
+                        out var target,
+                        out var typePointer,
+                        out var typeLength);
+                    NativeError.ThrowIfFailed(getError, "edge/read");
+                    edges.Add(new LatticeEdgeInfo(
+                        new LatticeEdgeId(edgeId),
+                        new LatticeNodeId(source),
+                        new LatticeNodeId(target),
+                        NativeText.Decode(typePointer, checked((int)typeLength), "edge type")));
+                }
+
+                return edges.AsReadOnly();
+            }
+            finally
+            {
+                NativeMethods.FreeEdgeResult(result);
+            }
+        }
+    }
+
     internal T WithActiveHandle<T>(Func<nint, T> action)
     {
         ArgumentNullException.ThrowIfNull(action);
@@ -393,3 +577,10 @@ public readonly record struct LatticeNodeId(ulong Value);
 
 /// <summary>A stable native edge identifier.</summary>
 public readonly record struct LatticeEdgeId(ulong Value);
+
+/// <summary>A detached edge observed by traversal.</summary>
+public sealed record LatticeEdgeInfo(
+    LatticeEdgeId Id,
+    LatticeNodeId Source,
+    LatticeNodeId Target,
+    string Type);

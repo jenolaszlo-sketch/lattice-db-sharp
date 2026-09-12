@@ -15,12 +15,14 @@ public sealed class LatticeRow
     /// <summary>The number of values in this row.</summary>
     public int Count => values.Count;
 
+    /// <summary>Gets the column name at a zero-based ordinal.</summary>
     public string GetName(int ordinal)
     {
         CheckOrdinal(ordinal);
         return columns[ordinal];
     }
 
+    /// <summary>Gets the value at a zero-based ordinal.</summary>
     public LatticeValue GetValue(int ordinal)
     {
         CheckOrdinal(ordinal);
@@ -30,6 +32,7 @@ public sealed class LatticeRow
     /// <summary>Gets a value by its zero-based ordinal.</summary>
     public LatticeValue this[int ordinal] => GetValue(ordinal);
 
+    /// <summary>Gets the value of a uniquely named column.</summary>
     public LatticeValue this[string name]
     {
         get
@@ -60,6 +63,7 @@ public sealed class LatticeRow
         }
     }
 
+    /// <summary>Resolves a unique column name to its ordinal, or false when missing or ambiguous.</summary>
     public bool TryGetOrdinal(string name, out int ordinal)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);

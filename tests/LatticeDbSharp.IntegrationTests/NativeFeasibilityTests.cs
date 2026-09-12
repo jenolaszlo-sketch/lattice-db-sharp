@@ -683,6 +683,157 @@ public sealed class NativeFeasibilityTests
         Assert.False(File.Exists(missing));
     }
 
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Edge_delete_properties_and_traversal_round_trip()
+    {
+        using var database = LatticeDatabase.OpenMemory();
+        LatticeNodeId a;
+        LatticeNodeId b;
+        LatticeNodeId c;
+        LatticeEdgeId knows;
+
+        using (var write = database.BeginWriteTransaction())
+        {
+            a = write.CreateNode("Person");
+            b = write.CreateNode("Person");
+            c = write.CreateNode("Person");
+            knows = write.CreateEdge(a, b, "KNOWS");
+            write.CreateEdge(b, c, "KNOWS");
+            write.CreateEdge(a, c, "LIKES");
+
+            write.SetEdgeProperty(knows, "weight", LatticeValue.From(3L));
+            Assert.True(write.TryGetEdgeProperty(knows, "weight", out var weight));
+            Assert.Equal(LatticeValue.From(3L), weight);
+            Assert.False(write.TryGetEdgeProperty(knows, "missing", out _));
+            write.Commit();
+        }
+
+        using (var read = database.BeginReadTransaction())
+        {
+            var outgoing = read.GetOutgoingEdges(a);
+            Assert.Equal(2, outgoing.Count);
+            Assert.Contains(outgoing, edge => edge.Id == knows && edge.Type == "KNOWS" && edge.Source == a && edge.Target == b);
+            var incoming = read.GetIncomingEdges(c);
+            Assert.Equal(2, incoming.Count);
+            var knowsOnly = read.GetOutgoingEdges(a, "KNOWS");
+            Assert.Single(knowsOnly);
+            var limited = read.GetOutgoingEdges(a, "KNOWS", limit: 1);
+            Assert.Single(limited);
+            read.Commit();
+        }
+
+        using (var write = database.BeginWriteTransaction())
+        {
+            write.RemoveEdgeProperty(knows, "weight");
+            Assert.False(write.TryGetEdgeProperty(knows, "weight", out _));
+            write.DeleteEdge(a, b, "KNOWS");
+            Assert.Single(write.GetOutgoingEdges(a));
+            Assert.Empty(write.GetOutgoingEdges(a, "KNOWS"));
+            write.Commit();
+        }
+
+        using var verify = database.BeginReadTransaction();
+        Assert.Empty(verify.GetIncomingEdges(b, "KNOWS"));
+        verify.Commit();
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Edge_operations_reject_read_only_disposed_and_malformed_input()
+    {
+        using var database = LatticeDatabase.OpenMemory();
+        LatticeNodeId node;
+        LatticeEdgeId edge;
+        using (var write = database.BeginWriteTransaction())
+        {
+            node = write.CreateNode("Person");
+            var other = write.CreateNode("Person");
+            edge = write.CreateEdge(node, other, "KNOWS");
+            Assert.Throws<ArgumentException>(() => write.DeleteEdge(node, other, "  "));
+            Assert.Throws<ArgumentException>(() => write.SetEdgeProperty(edge, "", LatticeValue.From(1L)));
+            Assert.Throws<ArgumentOutOfRangeException>(() => write.GetOutgoingEdges(node, "KNOWS", limit: -1));
+            write.Commit();
+        }
+
+        using var read = database.BeginReadTransaction();
+        Assert.Throws<InvalidOperationException>(() => read.DeleteEdge(node, node, "KNOWS"));
+        Assert.Throws<InvalidOperationException>(() => read.SetEdgeProperty(edge, "k", LatticeValue.From(1L)));
+        Assert.Throws<InvalidOperationException>(() => read.RemoveEdgeProperty(edge, "k"));
+        Assert.Single(read.GetOutgoingEdges(node));
+        read.Commit();
+
+        var disposed = database.BeginReadTransaction();
+        disposed.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => disposed.GetOutgoingEdges(node));
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Concurrent_reads_on_one_transaction_stay_consistent()
+    {
+        using var database = LatticeDatabase.OpenMemory();
+        LatticeNodeId hub;
+        using (var write = database.BeginWriteTransaction())
+        {
+            hub = write.CreateNode("Hub");
+            for (var index = 0; index < 10; index++)
+            {
+                var leaf = write.CreateNode("Leaf");
+                write.CreateEdge(hub, leaf, "LINKS");
+            }
+
+            write.Commit();
+        }
+
+        using var read = database.BeginReadTransaction();
+        var results = new System.Collections.Concurrent.ConcurrentBag<int>();
+        System.Threading.Tasks.Parallel.For(0, 32, _ =>
+        {
+            results.Add(read.GetOutgoingEdges(hub).Count);
+        });
+        Assert.All(results, count => Assert.Equal(10, count));
+        read.Commit();
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Repeated_create_query_dispose_cycles_are_stable()
+    {
+        for (var cycle = 0; cycle < 25; cycle++)
+        {
+            using var database = LatticeDatabase.OpenMemory();
+            LatticeNodeId first;
+            using (var write = database.BeginWriteTransaction())
+            {
+                first = write.CreateNode("Cycle");
+                var second = write.CreateNode("Cycle");
+                var edge = write.CreateEdge(first, second, "LINKS");
+                write.SetEdgeProperty(edge, "cycle", LatticeValue.From((long)cycle));
+                write.Commit();
+            }
+
+            using var read = database.BeginReadTransaction();
+            var edges = read.GetOutgoingEdges(first);
+            Assert.Single(edges);
+            Assert.True(read.TryGetEdgeProperty(edges[0].Id, "cycle", out var marker));
+            Assert.Equal(LatticeValue.From((long)cycle), marker);
+            read.Commit();
+        }
+    }
+
     private static WorkerProcess StartWorker(string mode, string path, string? access = null)
     {
         var workerAssembly = typeof(WorkerMarker).Assembly.Location;

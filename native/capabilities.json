@@ -52,6 +52,23 @@
       "status": "supported",
       "symbol": "lattice_edge_delete"
     },
+    "edge.setProperty": {
+      "status": "supported",
+      "symbol": "lattice_edge_set_property"
+    },
+    "edge.getProperty": {
+      "status": "supported",
+      "symbol": "lattice_edge_get_property"
+    },
+    "edge.removeProperty": {
+      "status": "supported",
+      "symbol": "lattice_edge_remove_property"
+    },
+    "edge.traverse": {
+      "status": "supported",
+      "symbol": "lattice_edge_get_outgoing",
+      "notes": "Outgoing, incoming, and per-type traversals return detached edge identities."
+    },
     "value.recursiveListMap": {
       "status": "supported",
       "symbol": "lattice_value_free"

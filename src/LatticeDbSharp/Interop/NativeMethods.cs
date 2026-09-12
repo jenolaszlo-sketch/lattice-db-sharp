@@ -53,6 +53,82 @@ internal static partial class NativeMethods
         string edgeType,
         out ulong edgeId);
 
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_delete", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode DeleteEdge(
+        nint transaction,
+        ulong source,
+        ulong target,
+        string edgeType);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_set_property", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode SetEdgeProperty(
+        nint transaction,
+        ulong edgeId,
+        string key,
+        in NativeValue value);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_get_property", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode GetEdgeProperty(
+        nint transaction,
+        ulong edgeId,
+        string key,
+        out NativeValue value);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_remove_property", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode RemoveEdgeProperty(
+        nint transaction,
+        ulong edgeId,
+        string key);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_get_outgoing")]
+    internal static partial NativeErrorCode GetOutgoingEdges(
+        nint transaction,
+        ulong nodeId,
+        out nint result);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_get_incoming")]
+    internal static partial NativeErrorCode GetIncomingEdges(
+        nint transaction,
+        ulong nodeId,
+        out nint result);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_get_outgoing_by_type", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode GetOutgoingEdgesByType(
+        nint transaction,
+        ulong nodeId,
+        string edgeType,
+        nuint limit,
+        out nint result);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_get_incoming_by_type", StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial NativeErrorCode GetIncomingEdgesByType(
+        nint transaction,
+        ulong nodeId,
+        string edgeType,
+        nuint limit,
+        out nint result);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_result_count")]
+    internal static partial uint EdgeResultCount(nint result);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_result_get_id")]
+    internal static partial NativeErrorCode EdgeResultGetId(
+        nint result,
+        uint index,
+        out ulong edgeId);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_result_get")]
+    internal static partial NativeErrorCode EdgeResultGet(
+        nint result,
+        uint index,
+        out ulong source,
+        out ulong target,
+        out nint edgeType,
+        out uint edgeTypeLength);
+
+    [LibraryImport(LibraryName, EntryPoint = "lattice_edge_result_free")]
+    internal static partial void FreeEdgeResult(nint result);
+
     [LibraryImport(LibraryName, EntryPoint = "lattice_node_add_label", StringMarshalling = StringMarshalling.Utf8)]
     internal static partial NativeErrorCode AddNodeLabel(
         nint transaction,

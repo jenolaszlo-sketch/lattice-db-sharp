@@ -35,7 +35,7 @@ P/Invoke, pointers, opaque native handles, or manual memory ownership:
 
 ## Status
 
-**0.1.0 is stable.** The binding opens file or memory databases, runs explicit
+**The current source targets 0.3.0.** The binding opens file or memory databases, runs explicit
 read/write transactions, and covers node/edge creation, edge deletion,
 properties, detached traversal, commit, rollback, single-writer behavior,
 finalizer cleanup, close/reopen persistence, cross-process locking, and
@@ -48,8 +48,8 @@ machine-readable capability matrix are archived and hash-verified in CI. Native
 assets are built through a pinned, traceable process from that exact base plus a small, disclosed,
 hash-verified durable-recovery patch carried in this repository. The staging and
 package validation carry verified Linux x64, Windows x64, and macOS ARM64
-runtimes with their build, patch, and ABI evidence. All 26 expanded native
-tests pass on each platform. Other runtime identifiers fail with an actionable
+runtimes with their build, patch, and ABI evidence. The 43-test native suite
+runs for each supported platform in CI. Other runtime identifiers fail with an actionable
 diagnostic rather than loading an arbitrary system library. The macOS asset is
 built natively on the macOS CI runner and ad-hoc code-signed so its pages map
 on Apple Silicon.
@@ -68,13 +68,13 @@ retrieval features are proven.
 
 ## API
 
-The 0.1.0 surface provides synchronous database lifecycle, transactions, graph
+The 0.3.0 source surface provides synchronous database lifecycle, transactions, graph
 values and identifiers, node/edge/property operations, detached edge
 traversal, Cypher preparation and execution, parameter binding, result
-lifetimes, and structured native/query errors. It also exposes the pinned
-engine's single configured vector write per node; vector search, full-text,
-index, and stream surfaces follow only after their ownership models are
-verified.
+lifetimes, structured native/query errors, property indexes, vector writes and
+search, and BM25/fuzzy full-text indexes and search. Batch vector ingestion
+reports native progress and requires rollback after a partial failure. Values
+are detached and support structural equality, including nested lists and maps.
 
 The native v0.15.0 vector setter accepts a `key` parameter but ignores it and
 stores one vector per node, so LatticeDbSharp intentionally omits that key from
@@ -112,6 +112,74 @@ foreach (var edge in read.GetOutgoingEdges(alice))
 read.Commit();
 ```
 
+Vector and full-text retrieval use the same explicit transaction model:
+
+```csharp
+using var vectorDb = LatticeDatabase.OpenMemory(new LatticeDatabaseOptions
+{
+    EnableVector = true,
+    VectorDimensions = 3,
+});
+vectorDb.ExecuteWrite(write => write.BatchInsertNodes([
+    new("Article", new float[] { 1, 0, 0 }),
+    new("Article", new float[] { 0, 1, 0 }),
+]));
+var nearest = vectorDb.VectorSearch(new float[] { 1, 0, 0 }, count: 2);
+
+vectorDb.ExecuteWrite(write =>
+{
+    var article = write.CreateNode("Article");
+    write.SetProperty(article, "text", LatticeValue.From("quick brown fox"));
+});
+vectorDb.CreateNodeFtsIndex("Article", "text");
+var matches = vectorDb.FtsSearch("Article", "text", "quick", limit: 10);
+```
+
+If a batch fails, catch `LatticeBatchInsertException` to inspect
+`CompletedCount`, then roll back before retrying:
+
+```csharp
+using var write = database.BeginWriteTransaction();
+try
+{
+    write.BatchInsertNodes(nodes);
+    write.Commit();
+}
+catch (LatticeBatchInsertException error)
+{
+    Console.WriteLine($"Native progress: {error.CompletedCount}/{error.RequestedCount}");
+    write.Rollback();
+}
+```
+
+Databases can be snapshotted and restored without exposing native pointers:
+
+```csharp
+byte[] snapshot = database.Serialize();
+using var restored = LatticeDatabase.Deserialize(snapshot);
+```
+
+Prepared queries support an atomic parameter-dictionary execution path plus
+strict single-row and scalar helpers:
+
+```csharp
+using var query = database.Prepare(
+    "MATCH (n:Person) WHERE n.name = $name RETURN n.name AS name");
+using var read = database.BeginReadTransaction();
+var name = query.ExecuteScalar(read, new Dictionary<string, LatticeValue>
+{
+    ["name"] = LatticeValue.From("Ada"),
+}).AsString();
+read.Commit();
+```
+
+Individual query operations are synchronized, but a sequence of separate
+`Bind` calls followed by `Execute` belongs to one caller. Use the dictionary
+overloads when a query is shared; every dictionary execution on that prepared
+query must provide the same parameter names because the native API cannot clear
+old bindings. Consume each result cursor from one caller. `ReadAll` holds the
+cursor lock for the complete materialization, and retained rows are detached.
+
 Transactions, prepared queries, and results are native owners. Dispose them in
 reverse nesting order; a database intentionally refuses to close while a child
 is active. An uncommitted transaction rolls back when disposed.
@@ -143,7 +211,6 @@ gates pass.
 - [Native runtime and packaging](docs/native-runtime.md)
 - [Native ownership contract](docs/native-ownership.md)
 - [Compatibility policy](docs/compatibility.md)
-- [Design review and remediation notes](docs/review.md)
 
 ## License and attribution
 

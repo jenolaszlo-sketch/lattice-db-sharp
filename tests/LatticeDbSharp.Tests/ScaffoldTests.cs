@@ -87,6 +87,50 @@ public sealed class ScaffoldTests
     }
 
     [Fact]
+    public void Values_use_structural_equality_for_nested_data_and_order_independent_maps()
+    {
+        var first = LatticeValue.From(new Dictionary<string, LatticeValue>
+        {
+            ["bytes"] = LatticeValue.From(new byte[] { 1, 2 }),
+            ["items"] = LatticeValue.From(new[] { LatticeValue.From(3L), LatticeValue.From("four") }),
+        });
+        var second = LatticeValue.From(new Dictionary<string, LatticeValue>
+        {
+            ["items"] = LatticeValue.From(new[] { LatticeValue.From(3L), LatticeValue.From("four") }),
+            ["bytes"] = LatticeValue.From(new byte[] { 1, 2 }),
+        });
+
+        Assert.Equal(first, second);
+        Assert.Equal(first.GetHashCode(), second.GetHashCode());
+        Assert.NotEqual(first, LatticeValue.From(new Dictionary<string, LatticeValue>
+        {
+            ["bytes"] = LatticeValue.From(new byte[] { 1, 3 }),
+            ["items"] = LatticeValue.From(new[] { LatticeValue.From(3L), LatticeValue.From("four") }),
+        }));
+    }
+
+    [Fact]
+    public void Values_define_equality_for_every_shape_and_ordered_collections()
+    {
+        Assert.Equal(LatticeValue.Null, LatticeValue.Null);
+        Assert.Equal(LatticeValue.From(true), LatticeValue.From(true));
+        Assert.Equal(LatticeValue.From(4L), LatticeValue.From(4L));
+        Assert.Equal(LatticeValue.From(double.NaN), LatticeValue.From(double.NaN));
+        Assert.Equal(LatticeValue.From("text"), LatticeValue.From("text"));
+        Assert.Equal(LatticeValue.From(new byte[] { 1, 2 }), LatticeValue.From(new byte[] { 1, 2 }));
+        Assert.Equal(
+            LatticeValue.From(new float[] { float.NaN, -0f }),
+            LatticeValue.From(new float[] { float.NaN, 0f }));
+        Assert.NotEqual(LatticeValue.From(4L), LatticeValue.From(4d));
+        Assert.NotEqual(
+            LatticeValue.From(new[] { LatticeValue.From(1L), LatticeValue.From(2L) }),
+            LatticeValue.From(new[] { LatticeValue.From(2L), LatticeValue.From(1L) }));
+        Assert.NotEqual(
+            LatticeValue.From(new Dictionary<string, LatticeValue> { ["Key"] = LatticeValue.Null }),
+            LatticeValue.From(new Dictionary<string, LatticeValue> { ["key"] = LatticeValue.Null }));
+    }
+
+    [Fact]
     public void Recursive_value_builder_enforces_depth_and_allocation_limits()
     {
         var nested = LatticeValue.Null;

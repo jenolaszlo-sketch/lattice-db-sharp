@@ -927,7 +927,7 @@ graph changefeed
 Target:
 
 ```text
-0.3.0
+0.4.0
 ```
 
 ## Phase 4: hardening

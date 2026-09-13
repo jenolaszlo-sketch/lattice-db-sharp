@@ -170,7 +170,7 @@ Review notes recorded against the proposal:
   DataIngestion/Agent Framework compat emerges without adapters.
 - New package starts at `0.1.0-preview.1` following repository versioning.
 
-## Phase 3 — durable events (0.3.0)
+## Phase 3 — durable events (0.4.0)
 
 - [ ] Named stream publication/read, sequence numbers, offsets, and trimming.
 - [ ] Built-in graph changefeed.
@@ -266,8 +266,10 @@ scoped transaction conveniences; verified native packaging; and clean
 package-only consumers. Advisory query write classification, node and edge
 creation/deletion, labels, properties, edge properties, detached traversal,
 and configured vector writes are now complete. The real-engine suite passes
-all 26 expanded tests on each OS, including child-process hard-kill recovery.
-The 0.1.0 surface is complete; retrieval and streams are the next slices.
+the 43-test native suite on each OS, including child-process hard-kill recovery,
+resolver pinning, corruption deadlines, and process-memory evidence.
+The current 0.3.0 source surface completes graph and retrieval work; durable
+streams are the next slice.
 The preview intentionally keeps the API synchronous, deterministic, detached,
 and non-lossy; revisit the deferred ergonomics only after those native paths
 have real consumer evidence.

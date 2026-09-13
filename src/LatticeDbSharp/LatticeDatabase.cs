@@ -38,12 +38,7 @@ public sealed class LatticeDatabase : IDisposable
     public static LatticeDatabase Open(string path, LatticeDatabaseOptions? options = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        if (path.Contains('\0', StringComparison.Ordinal))
-        {
-            throw new ArgumentException("Database path cannot contain a null character.", nameof(path));
-        }
-
-        NativeText.Validate(path, nameof(path));
+        NativeText.ValidateNullTerminated(path, nameof(path));
 
         var normalizedPath = string.Equals(path, ":memory:", StringComparison.Ordinal)
             ? path
@@ -214,6 +209,8 @@ public sealed class LatticeDatabase : IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
         ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        NativeText.ValidateNullTerminated(label, nameof(label));
+        NativeText.ValidateNullTerminated(property, nameof(property));
         lock (gate)
         {
             ObjectDisposedException.ThrowIf(closed, this);
@@ -232,6 +229,8 @@ public sealed class LatticeDatabase : IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
         ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        NativeText.ValidateNullTerminated(label, nameof(label));
+        NativeText.ValidateNullTerminated(property, nameof(property));
         lock (gate)
         {
             ObjectDisposedException.ThrowIf(closed, this);
@@ -253,6 +252,8 @@ public sealed class LatticeDatabase : IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(edgeType);
         ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        NativeText.ValidateNullTerminated(edgeType, nameof(edgeType));
+        NativeText.ValidateNullTerminated(property, nameof(property));
         lock (gate)
         {
             ObjectDisposedException.ThrowIf(closed, this);
@@ -271,6 +272,8 @@ public sealed class LatticeDatabase : IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(edgeType);
         ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        NativeText.ValidateNullTerminated(edgeType, nameof(edgeType));
+        NativeText.ValidateNullTerminated(property, nameof(property));
         lock (gate)
         {
             ObjectDisposedException.ThrowIf(closed, this);
@@ -342,6 +345,8 @@ public sealed class LatticeDatabase : IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
         ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        NativeText.ValidateNullTerminated(label, nameof(label));
+        NativeText.ValidateNullTerminated(property, nameof(property));
         lock (gate)
         {
             ObjectDisposedException.ThrowIf(closed, this);
@@ -360,6 +365,8 @@ public sealed class LatticeDatabase : IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
         ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        NativeText.ValidateNullTerminated(label, nameof(label));
+        NativeText.ValidateNullTerminated(property, nameof(property));
         lock (gate)
         {
             ObjectDisposedException.ThrowIf(closed, this);
@@ -378,6 +385,8 @@ public sealed class LatticeDatabase : IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
         ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        NativeText.ValidateNullTerminated(label, nameof(label));
+        NativeText.ValidateNullTerminated(property, nameof(property));
         lock (gate)
         {
             ObjectDisposedException.ThrowIf(closed, this);
@@ -397,6 +406,8 @@ public sealed class LatticeDatabase : IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(edgeType);
         ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        NativeText.ValidateNullTerminated(edgeType, nameof(edgeType));
+        NativeText.ValidateNullTerminated(property, nameof(property));
         lock (gate)
         {
             ObjectDisposedException.ThrowIf(closed, this);
@@ -415,6 +426,8 @@ public sealed class LatticeDatabase : IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(edgeType);
         ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        NativeText.ValidateNullTerminated(edgeType, nameof(edgeType));
+        NativeText.ValidateNullTerminated(property, nameof(property));
         lock (gate)
         {
             ObjectDisposedException.ThrowIf(closed, this);
@@ -433,6 +446,8 @@ public sealed class LatticeDatabase : IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(edgeType);
         ArgumentException.ThrowIfNullOrWhiteSpace(property);
+        NativeText.ValidateNullTerminated(edgeType, nameof(edgeType));
+        NativeText.ValidateNullTerminated(property, nameof(property));
         lock (gate)
         {
             ObjectDisposedException.ThrowIf(closed, this);
@@ -537,6 +552,8 @@ public sealed class LatticeDatabase : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
         ArgumentException.ThrowIfNullOrWhiteSpace(property);
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
+        NativeText.ValidateNullTerminated(label, nameof(label));
+        NativeText.ValidateNullTerminated(property, nameof(property));
         NativeText.Validate(query, nameof(query));
         if (limit <= 0)
         {
@@ -596,12 +613,7 @@ public sealed class LatticeDatabase : IDisposable
     public LatticeQuery Prepare(string cypher)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(cypher);
-        if (cypher.Contains('\0', StringComparison.Ordinal))
-        {
-            throw new ArgumentException("Cypher cannot contain a null character.", nameof(cypher));
-        }
-
-        NativeText.Validate(cypher, nameof(cypher));
+        NativeText.ValidateNullTerminated(cypher, nameof(cypher));
 
         lock (gate)
         {

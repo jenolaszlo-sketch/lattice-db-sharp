@@ -3,13 +3,20 @@ namespace LatticeDbSharp;
 /// <summary>A detached row snapshot with stable column order.</summary>
 public sealed class LatticeRow
 {
-    private readonly IReadOnlyList<string> columns;
+    private readonly LatticeRowMetadata metadata;
     private readonly IReadOnlyList<LatticeValue> values;
 
     internal LatticeRow(IReadOnlyList<string> columns, IReadOnlyList<LatticeValue> values)
+        : this(new LatticeRowMetadata(columns), values)
     {
-        this.columns = columns;
+    }
+
+    internal LatticeRow(LatticeRowMetadata metadata, IReadOnlyList<LatticeValue> values)
+    {
+        this.metadata = metadata;
         this.values = values;
+        if (metadata.Columns.Count != values.Count)
+            throw new ArgumentException("Column and value counts must match.", nameof(values));
     }
 
     /// <summary>The number of values in this row.</summary>
@@ -19,7 +26,7 @@ public sealed class LatticeRow
     public string GetName(int ordinal)
     {
         CheckOrdinal(ordinal);
-        return columns[ordinal];
+        return metadata.Columns[ordinal];
     }
 
     /// <summary>Gets the value at a zero-based ordinal.</summary>
@@ -38,25 +45,14 @@ public sealed class LatticeRow
         get
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(name);
-            var ordinal = -1;
-            for (var index = 0; index < columns.Count; index++)
-            {
-                if (!string.Equals(columns[index], name, StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                if (ordinal >= 0)
-                {
-                    throw new InvalidOperationException($"Column name '{name}' is ambiguous.");
-                }
-
-                ordinal = index;
-            }
-
-            if (ordinal < 0)
+            if (!metadata.Ordinals.TryGetValue(name, out var ordinal))
             {
                 throw new KeyNotFoundException($"Column '{name}' was not found.");
+            }
+
+            if (ordinal == -2)
+            {
+                throw new InvalidOperationException($"Column name '{name}' is ambiguous.");
             }
 
             return values[ordinal];
@@ -67,24 +63,13 @@ public sealed class LatticeRow
     public bool TryGetOrdinal(string name, out int ordinal)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        ordinal = -1;
-        for (var index = 0; index < columns.Count; index++)
+        if (!metadata.Ordinals.TryGetValue(name, out ordinal) || ordinal < 0)
         {
-            if (!string.Equals(columns[index], name, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            if (ordinal >= 0)
-            {
-                ordinal = -1;
-                return false;
-            }
-
-            ordinal = index;
+            ordinal = -1;
+            return false;
         }
 
-        return ordinal >= 0;
+        return true;
     }
 
     private void CheckOrdinal(int ordinal)
@@ -92,4 +77,26 @@ public sealed class LatticeRow
         ArgumentOutOfRangeException.ThrowIfNegative(ordinal);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(ordinal, values.Count);
     }
+}
+
+internal sealed class LatticeRowMetadata
+{
+    internal LatticeRowMetadata(IReadOnlyList<string> columns)
+    {
+        Columns = columns;
+        var lookup = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (var index = 0; index < columns.Count; index++)
+        {
+            if (lookup.ContainsKey(columns[index]))
+                lookup[columns[index]] = -1;
+            else
+                lookup.Add(columns[index], index);
+        }
+
+        Ordinals = lookup;
+    }
+
+    internal IReadOnlyList<string> Columns { get; }
+
+    internal IReadOnlyDictionary<string, int> Ordinals { get; }
 }

@@ -17,8 +17,13 @@ public enum LatticeValueType
     Map = 8,
 }
 
-/// <summary>An immutable, detached LatticeDB value.</summary>
-public readonly struct LatticeValue
+/// <summary>An immutable, detached LatticeDB value with structural equality.</summary>
+/// <remarks>
+/// Lists and vectors are order-sensitive. Maps compare ordinal keys without
+/// depending on enumeration order. Floating-point values use the corresponding
+/// .NET <see cref="double.Equals(double)"/> and <see cref="float.Equals(float)"/> semantics.
+/// </remarks>
+public readonly struct LatticeValue : IEquatable<LatticeValue>
 {
     private readonly object? value;
 
@@ -123,6 +128,120 @@ public readonly struct LatticeValue
 
     internal float[] GetVectorStorage() => GetValue<float[]>(LatticeValueType.Vector);
 
+    /// <summary>Compares values by type and recursively by content.</summary>
+    public bool Equals(LatticeValue other)
+    {
+        if (Type != other.Type)
+        {
+            return false;
+        }
+
+        return Type switch
+        {
+            LatticeValueType.Null => true,
+            LatticeValueType.Bytes => ((byte[])value!).AsSpan().SequenceEqual((byte[])other.value!),
+            LatticeValueType.Vector => VectorEquals((float[])value!, (float[])other.value!),
+            LatticeValueType.List => ListEquals(
+                (IReadOnlyList<LatticeValue>)value!,
+                (IReadOnlyList<LatticeValue>)other.value!),
+            LatticeValueType.Map => MapEquals(
+                (IReadOnlyDictionary<string, LatticeValue>)value!,
+                (IReadOnlyDictionary<string, LatticeValue>)other.value!),
+            _ => Equals(value, other.value),
+        };
+    }
+
+    /// <inheritdoc />
+    public override bool Equals(object? obj) => obj is LatticeValue other && Equals(other);
+
+    /// <inheritdoc />
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(Type);
+        switch (Type)
+        {
+            case LatticeValueType.Bytes:
+                foreach (var item in (byte[])value!) hash.Add(item);
+                break;
+            case LatticeValueType.Vector:
+                foreach (var item in (float[])value!) hash.Add(item);
+                break;
+            case LatticeValueType.List:
+                foreach (var item in (IReadOnlyList<LatticeValue>)value!) hash.Add(item);
+                break;
+            case LatticeValueType.Map:
+                // XOR makes the map hash independent of enumeration order.
+                var mapHash = 0;
+                foreach (var pair in (IReadOnlyDictionary<string, LatticeValue>)value!)
+                {
+                    mapHash ^= HashCode.Combine(StringComparer.Ordinal.GetHashCode(pair.Key), pair.Value.GetHashCode());
+                }
+                hash.Add(mapHash);
+                break;
+            default:
+                hash.Add(value);
+                break;
+        }
+
+        return hash.ToHashCode();
+    }
+
+    public static bool operator ==(LatticeValue left, LatticeValue right) => left.Equals(right);
+
+    public static bool operator !=(LatticeValue left, LatticeValue right) => !left.Equals(right);
+
+    private static bool ListEquals(IReadOnlyList<LatticeValue> left, IReadOnlyList<LatticeValue> right)
+    {
+        if (left.Count != right.Count)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < left.Count; index++)
+        {
+            if (!left[index].Equals(right[index]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool VectorEquals(float[] left, float[] right)
+    {
+        if (left.Length != right.Length)
+            return false;
+        for (var index = 0; index < left.Length; index++)
+        {
+            if (!left[index].Equals(right[index]))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool MapEquals(
+        IReadOnlyDictionary<string, LatticeValue> left,
+        IReadOnlyDictionary<string, LatticeValue> right)
+    {
+        if (left.Count != right.Count)
+        {
+            return false;
+        }
+
+        foreach (var pair in left)
+        {
+            if (!right.TryGetValue(pair.Key, out var value) || !pair.Value.Equals(value))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private T GetValue<T>(LatticeValueType expected)
     {
         if (Type != expected)
@@ -133,4 +252,3 @@ public readonly struct LatticeValue
         return (T)value!;
     }
 }
-

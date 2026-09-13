@@ -69,3 +69,18 @@ static LatticeDbSharp.LatticeFtsHit.operator !=(LatticeDbSharp.LatticeFtsHit? le
 static LatticeDbSharp.LatticeFtsHit.operator ==(LatticeDbSharp.LatticeFtsHit? left, LatticeDbSharp.LatticeFtsHit? right) -> bool
 LatticeDbSharp.LatticeHashEmbeddings
 static LatticeDbSharp.LatticeHashEmbeddings.HashEmbed(string! text, int dimensions) -> float[]!
+LatticeDbSharp.LatticeBatchInsertException
+LatticeDbSharp.LatticeBatchInsertException.CompletedCount.get -> int
+LatticeDbSharp.LatticeBatchInsertException.RequestedCount.get -> int
+LatticeDbSharp.LatticeTransaction.RequiresRollback.get -> bool
+LatticeDbSharp.LatticeValue.Equals(LatticeDbSharp.LatticeValue other) -> bool
+override LatticeDbSharp.LatticeValue.Equals(object? obj) -> bool
+override LatticeDbSharp.LatticeValue.GetHashCode() -> int
+static LatticeDbSharp.LatticeValue.operator !=(LatticeDbSharp.LatticeValue left, LatticeDbSharp.LatticeValue right) -> bool
+static LatticeDbSharp.LatticeValue.operator ==(LatticeDbSharp.LatticeValue left, LatticeDbSharp.LatticeValue right) -> bool
+LatticeDbSharp.LatticeQuery.Execute(LatticeDbSharp.LatticeTransaction! transaction, System.Collections.Generic.IReadOnlyDictionary<string!, LatticeDbSharp.LatticeValue>! parameters) -> LatticeDbSharp.LatticeQueryResult!
+LatticeDbSharp.LatticeQuery.ExecuteAll(LatticeDbSharp.LatticeTransaction! transaction, System.Collections.Generic.IReadOnlyDictionary<string!, LatticeDbSharp.LatticeValue>! parameters) -> System.Collections.Generic.IReadOnlyList<LatticeDbSharp.LatticeRow!>!
+LatticeDbSharp.LatticeQuery.ExecuteScalar(LatticeDbSharp.LatticeTransaction! transaction) -> LatticeDbSharp.LatticeValue
+LatticeDbSharp.LatticeQuery.ExecuteScalar(LatticeDbSharp.LatticeTransaction! transaction, System.Collections.Generic.IReadOnlyDictionary<string!, LatticeDbSharp.LatticeValue>! parameters) -> LatticeDbSharp.LatticeValue
+LatticeDbSharp.LatticeQuery.ExecuteSingle(LatticeDbSharp.LatticeTransaction! transaction) -> LatticeDbSharp.LatticeRow!
+LatticeDbSharp.LatticeQuery.ExecuteSingle(LatticeDbSharp.LatticeTransaction! transaction, System.Collections.Generic.IReadOnlyDictionary<string!, LatticeDbSharp.LatticeValue>! parameters) -> LatticeDbSharp.LatticeRow!

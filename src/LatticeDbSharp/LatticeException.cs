@@ -42,6 +42,30 @@ public class LatticeException : Exception
     }
 }
 
+/// <summary>Reports a batch insertion failure and the native progress count.</summary>
+public sealed class LatticeBatchInsertException : LatticeException
+{
+    internal LatticeBatchInsertException(
+        string operation,
+        NativeErrorCode error,
+        int completedCount,
+        int requestedCount)
+        : base(operation, error)
+    {
+        CompletedCount = completedCount;
+        RequestedCount = requestedCount;
+    }
+
+    /// <summary>
+    /// The progress count returned by native code when the batch failed. Partial
+    /// native side effects can exceed this count, so the transaction still requires rollback.
+    /// </summary>
+    public int CompletedCount { get; }
+
+    /// <summary>The number of nodes requested by the batch.</summary>
+    public int RequestedCount { get; }
+}
+
 internal static class NativeError
 {
     internal static void ThrowIfFailed(NativeErrorCode error, string operation)

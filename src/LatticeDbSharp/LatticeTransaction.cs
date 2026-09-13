@@ -19,7 +19,7 @@ public sealed class LatticeTransaction : IDisposable
     private readonly object gate = new();
     private readonly LatticeDatabase database;
     private readonly SafeLatticeTransactionHandle handle;
-    private bool completed;
+    private TransactionState state;
 
     internal LatticeTransaction(
         LatticeDatabase database,
@@ -43,7 +43,19 @@ public sealed class LatticeTransaction : IDisposable
         {
             lock (gate)
             {
-                return completed;
+                return state == TransactionState.Completed;
+            }
+        }
+    }
+
+    /// <summary>Gets whether a failed partial operation requires this transaction to be rolled back.</summary>
+    public bool RequiresRollback
+    {
+        get
+        {
+            lock (gate)
+            {
+                return state == TransactionState.RollbackRequired;
             }
         }
     }
@@ -520,7 +532,7 @@ public sealed class LatticeTransaction : IDisposable
             foreach (var node in nodes)
             {
                 ArgumentNullException.ThrowIfNull(node);
-                ValidateNativeString(node.Label, nameof(nodes));
+                ValidateLabel(node.Label, nameof(nodes));
                 if (node.Vector.Length == 0)
                 {
                     throw new ArgumentException("Batch vectors must contain at least one dimension.", nameof(nodes));
@@ -528,12 +540,16 @@ public sealed class LatticeTransaction : IDisposable
             }
 
             var structSize = Marshal.SizeOf<NativeNodeWithVector>();
-            var specs = Marshal.AllocHGlobal(checked(nodes.Count * structSize));
-            var idsOut = Marshal.AllocHGlobal(checked(nodes.Count * sizeof(ulong)));
+            nint specs = nint.Zero;
+            nint idsOut = nint.Zero;
             var labels = new List<nint>(nodes.Count);
             var pinned = new List<GCHandle>(nodes.Count);
             try
             {
+                // Allocate each buffer inside the ownership scope. If a later
+                // allocation fails, already acquired buffers still get freed.
+                specs = Marshal.AllocHGlobal(checked(nodes.Count * structSize));
+                idsOut = Marshal.AllocHGlobal(checked(nodes.Count * sizeof(ulong)));
                 for (var index = 0; index < nodes.Count; index++)
                 {
                     var values = nodes[index].Vector.ToArray();
@@ -544,9 +560,9 @@ public sealed class LatticeTransaction : IDisposable
                     {
                         var labelBytes = NativeText.Encode(nodes[index].Label!, nameof(nodes));
                         label = Marshal.AllocHGlobal(labelBytes.Length + 1);
+                        labels.Add(label);
                         Marshal.Copy(labelBytes, 0, label, labelBytes.Length);
                         Marshal.WriteByte(label + labelBytes.Length, 0);
-                        labels.Add(label);
                     }
 
                     Marshal.StructureToPtr(
@@ -566,7 +582,12 @@ public sealed class LatticeTransaction : IDisposable
                     checked((uint)nodes.Count),
                     idsOut,
                     out var created);
-                NativeError.ThrowIfFailed(error, "node/batch-insert");
+                if (error != NativeErrorCode.Ok)
+                {
+                    state = TransactionState.RollbackRequired;
+                    throw new LatticeBatchInsertException(
+                        "node/batch-insert", error, checked((int)created), nodes.Count);
+                }
                 var createdIds = new long[checked((int)created)];
                 Marshal.Copy(idsOut, createdIds, 0, createdIds.Length);
                 return createdIds.Select(id => new LatticeNodeId((ulong)id)).ToArray();
@@ -583,8 +604,15 @@ public sealed class LatticeTransaction : IDisposable
                     handle.Free();
                 }
 
-                Marshal.FreeHGlobal(specs);
-                Marshal.FreeHGlobal(idsOut);
+                if (specs != nint.Zero)
+                {
+                    Marshal.FreeHGlobal(specs);
+                }
+
+                if (idsOut != nint.Zero)
+                {
+                    Marshal.FreeHGlobal(idsOut);
+                }
             }
         }
     }
@@ -649,6 +677,8 @@ public sealed class LatticeTransaction : IDisposable
             ArgumentException.ThrowIfNullOrWhiteSpace(label);
             ArgumentException.ThrowIfNullOrWhiteSpace(property);
             ArgumentException.ThrowIfNullOrWhiteSpace(query);
+            NativeText.ValidateNullTerminated(label, nameof(label));
+            NativeText.ValidateNullTerminated(property, nameof(property));
             NativeText.Validate(query, nameof(query));
             if (limit <= 0)
             {
@@ -690,6 +720,8 @@ public sealed class LatticeTransaction : IDisposable
             ArgumentException.ThrowIfNullOrWhiteSpace(label);
             ArgumentException.ThrowIfNullOrWhiteSpace(property);
             ArgumentException.ThrowIfNullOrWhiteSpace(query);
+            NativeText.ValidateNullTerminated(label, nameof(label));
+            NativeText.ValidateNullTerminated(property, nameof(property));
             NativeText.Validate(query, nameof(query));
             if (limit <= 0)
             {
@@ -749,7 +781,7 @@ public sealed class LatticeTransaction : IDisposable
     {
         lock (gate)
         {
-            EnsureActive();
+            EnsureNotCompleted();
             var error = NativeMethods.Rollback(handle.DangerousGetHandle());
             Complete();
             NativeError.ThrowIfFailed(error, "transaction/rollback");
@@ -765,7 +797,7 @@ public sealed class LatticeTransaction : IDisposable
     {
         lock (gate)
         {
-            if (completed)
+            if (state == TransactionState.Completed)
             {
                 return;
             }
@@ -787,18 +819,7 @@ public sealed class LatticeTransaction : IDisposable
     }
 
     private static void ValidateNativeString(string? value, string parameterName)
-    {
-        if (value is null)
-        {
-            return;
-        }
-
-        NativeText.Validate(value, parameterName);
-        if (value.Contains('\0', StringComparison.Ordinal))
-        {
-            throw new ArgumentException("Value cannot contain a null character.", parameterName);
-        }
-    }
+        => NativeText.ValidateNullTerminated(value, parameterName);
 
     private static void ValidateLabel(string? label, string parameterName)
     {
@@ -833,7 +854,17 @@ public sealed class LatticeTransaction : IDisposable
 
     private void EnsureActive()
     {
-        ObjectDisposedException.ThrowIf(completed, this);
+        EnsureNotCompleted();
+        if (state == TransactionState.RollbackRequired)
+        {
+            throw new InvalidOperationException(
+                "The transaction must be rolled back after a failed batch insertion.");
+        }
+    }
+
+    private void EnsureNotCompleted()
+    {
+        ObjectDisposedException.ThrowIf(state == TransactionState.Completed, this);
     }
 
     private void EnsureWritable()
@@ -848,8 +879,15 @@ public sealed class LatticeTransaction : IDisposable
     {
         handle.MarkConsumed();
         handle.Dispose();
-        completed = true;
+        state = TransactionState.Completed;
         database.ReleaseChild();
+    }
+
+    private enum TransactionState
+    {
+        Active,
+        RollbackRequired,
+        Completed,
     }
 
     private static uint ValidateLimit(int limit)

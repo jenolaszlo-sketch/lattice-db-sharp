@@ -10,6 +10,7 @@ internal static class NativeLibraryResolver
     private static readonly object Sync = new();
     private static bool initialized;
     private static string? resolvedPath;
+    private static nint resolvedHandle;
 
     internal static string? ResolvedPath
     {
@@ -56,6 +57,14 @@ internal static class NativeLibraryResolver
 
         lock (Sync)
         {
+            // LibraryImport asks the resolver for each unresolved entry point.
+            // Keep every entry point on the same implementation for the
+            // lifetime of the assembly, even if the environment changes later.
+            if (resolvedHandle != nint.Zero)
+            {
+                return resolvedHandle;
+            }
+
             var explicitPath = Environment.GetEnvironmentVariable(LibraryPathEnvironmentVariable);
             if (!string.IsNullOrWhiteSpace(explicitPath))
             {
@@ -93,6 +102,7 @@ internal static class NativeLibraryResolver
         {
             var handle = NativeLibrary.Load(path);
             resolvedPath = path;
+            resolvedHandle = handle;
             return handle;
         }
         catch (Exception exception) when (exception is DllNotFoundException or BadImageFormatException)

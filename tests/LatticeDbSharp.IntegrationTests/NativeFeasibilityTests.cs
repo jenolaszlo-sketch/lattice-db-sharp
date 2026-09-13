@@ -27,6 +27,17 @@ public sealed class NativeFeasibilityTests
 #if LATTICEDBSHARP_NATIVE_TESTS
     [Fact]
 #else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Native_library_selection_does_not_change_after_database_open()
+    {
+        using var temporary = TemporaryDirectory.Create();
+        using var worker = StartWorker("resolver", Path.Combine(temporary.Path, "resolver.db"));
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
     [Fact(Skip = "Enabled after the pinned ABI probe has run.")]
 #endif
     public void Managed_open_options_match_the_pinned_native_abi()
@@ -442,6 +453,43 @@ public sealed class NativeFeasibilityTests
 #else
     [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
 #endif
+    public void Query_conveniences_enforce_cardinality_and_complete_parameter_sets()
+    {
+        using var database = LatticeDatabase.OpenMemory();
+        using (var write = database.BeginWriteTransaction())
+        {
+            var single = write.CreateNode("Single");
+            write.SetProperty(single, "value", LatticeValue.From(7L));
+            write.CreateNode("Value");
+            write.CreateNode("Value");
+            write.Commit();
+        }
+
+        using var scalar = database.Prepare(
+            "MATCH (n:Single) WHERE n.value = $value RETURN n.value AS value");
+        using var read = database.BeginReadTransaction();
+        Assert.Equal(7L, scalar.ExecuteScalar(
+            read,
+            new Dictionary<string, LatticeValue> { ["value"] = LatticeValue.From(7L) }).AsInt64());
+        Assert.Throws<InvalidOperationException>(() => scalar.Execute(
+            read,
+            new Dictionary<string, LatticeValue> { ["different"] = LatticeValue.From(8L) }));
+        Assert.Throws<InvalidOperationException>(() => scalar.Bind("value", LatticeValue.From(9L)));
+
+        using var multiple = database.Prepare("MATCH (n:Value) RETURN n");
+        Assert.Throws<InvalidOperationException>(() => multiple.ExecuteSingle(read));
+
+        using var twoColumns = database.Prepare(
+            "MATCH (n:Single) RETURN n.value AS first, n.value AS second");
+        Assert.Throws<InvalidOperationException>(() => twoColumns.ExecuteScalar(read));
+        read.Commit();
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
     public void Query_result_must_be_disposed_before_its_query_and_database()
     {
         using var database = LatticeDatabase.OpenMemory();
@@ -467,8 +515,9 @@ public sealed class NativeFeasibilityTests
 
         using (var committed = database.BeginWriteTransaction())
         {
-            writeQuery.Bind("name", LatticeValue.From("committed"));
-            using (writeQuery.Execute(committed))
+            using (writeQuery.Execute(
+                committed,
+                new Dictionary<string, LatticeValue> { ["name"] = LatticeValue.From("committed") }))
             {
             }
 
@@ -477,8 +526,9 @@ public sealed class NativeFeasibilityTests
 
         using (var rolledBack = database.BeginWriteTransaction())
         {
-            writeQuery.Bind("name", LatticeValue.From("rolled-back"));
-            using (writeQuery.Execute(rolledBack))
+            using (writeQuery.Execute(
+                rolledBack,
+                new Dictionary<string, LatticeValue> { ["name"] = LatticeValue.From("rolled-back") }))
             {
             }
 
@@ -982,6 +1032,7 @@ public sealed class NativeFeasibilityTests
             Assert.Equal(3, ids.Count);
             Assert.Empty(write.BatchInsertNodes([]));
             Assert.Throws<ArgumentException>(() => write.BatchInsertNodes([new("Item", Array.Empty<float>())]));
+            Assert.Throws<ArgumentException>(() => write.BatchInsertNodes([new("Bad,Label", new float[] { 1, 0, 0 })]));
             write.Commit();
         }
 
@@ -1045,6 +1096,71 @@ public sealed class NativeFeasibilityTests
         database.DropNodeFtsIndex("Article", "text");
         Assert.False(database.NodeFtsIndexExists("Article", "text"));
         Assert.Throws<LatticeException>(() => database.FtsSearch("Article", "text", "quick", limit: 10));
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Identifiers_reject_embedded_nulls_before_index_or_fts_operations()
+    {
+        using var database = LatticeDatabase.OpenMemory();
+        const string invalidLabel = "Article\0Unexpected";
+        const string invalidProperty = "text\0Unexpected";
+        const string invalidUtf16 = "Article\uD800";
+
+        Assert.Throws<ArgumentException>(() => database.CreateNodePropertyIndex(invalidLabel, "text"));
+        Assert.Throws<ArgumentException>(() => database.DropNodePropertyIndex("Article", invalidProperty));
+        Assert.Throws<ArgumentException>(() => database.CreateNodeFtsIndex(invalidLabel, "text"));
+        Assert.Throws<ArgumentException>(() => database.DropNodeFtsIndex("Article", invalidProperty));
+        Assert.Throws<ArgumentException>(() => database.NodeFtsIndexExists(invalidLabel, "text"));
+        Assert.Throws<ArgumentException>(() => database.FtsSearch(invalidLabel, "text", "query", 10));
+        Assert.Throws<ArgumentException>(() => database.FtsSearch("Article", invalidProperty, "query", 10));
+        Assert.Throws<ArgumentException>(() => database.CreateEdgePropertyIndex("REL\0Unexpected", "weight"));
+        Assert.Throws<ArgumentException>(() => database.CreateEdgeFtsIndex("REL\0Unexpected", "text"));
+        Assert.Throws<ArgumentException>(() => database.CreateNodeFtsIndex(invalidUtf16, "text"));
+
+        using (var write = database.BeginWriteTransaction())
+        {
+            var article = write.CreateNode("Article");
+            write.SetProperty(article, "text", LatticeValue.From("safe index"));
+            write.Commit();
+        }
+
+        database.CreateNodeFtsIndex("Article", "text");
+        Assert.Throws<ArgumentException>(() => database.DropNodeFtsIndex(invalidLabel, "text"));
+        Assert.True(database.NodeFtsIndexExists("Article", "text"));
+        database.DropNodeFtsIndex("Article", "text");
+    }
+
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Failed_batch_requires_rollback_and_reports_native_progress()
+    {
+        using var database = LatticeDatabase.OpenMemory(new LatticeDatabaseOptions
+        {
+            EnableVector = true,
+            VectorDimensions = 2,
+        });
+        using var write = database.BeginWriteTransaction();
+
+        var exception = Assert.Throws<LatticeBatchInsertException>(() => write.BatchInsertNodes(
+        [
+            new("Valid", new float[] { 1, 0 }),
+            new("Invalid", new float[] { 1, 0, 0 }),
+        ]));
+
+        Assert.Equal(2, exception.RequestedCount);
+        Assert.InRange(exception.CompletedCount, 0, exception.RequestedCount);
+        Assert.True(write.RequiresRollback);
+        Assert.Throws<InvalidOperationException>(write.Commit);
+        Assert.Throws<InvalidOperationException>(() => write.CreateNode("TooLate"));
+        write.Rollback();
+        Assert.True(write.IsCompleted);
     }
 
 #if LATTICEDBSHARP_NATIVE_TESTS
@@ -1121,7 +1237,7 @@ public sealed class NativeFeasibilityTests
 #else
     [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
 #endif
-    public void Truncated_tail_repairs_or_rejects_without_hanging()
+    public void Truncated_tail_repairs_or_rejects_within_process_deadline()
     {
         using var directory = TemporaryDirectory.Create();
         var path = Path.Combine(directory.Path, "truncated.ltdb");
@@ -1134,15 +1250,8 @@ public sealed class NativeFeasibilityTests
 
         var bytes = File.ReadAllBytes(path);
         File.WriteAllBytes(path, bytes[..Math.Max(0, bytes.Length - 8)]);
-        try
-        {
-            using var repaired = LatticeDatabase.Open(path);
-            using var read = repaired.BeginReadTransaction();
-            read.Commit();
-        }
-        catch (LatticeException)
-        {
-        }
+        var probe = RunWorkerToCompletion("probe-open", path, TimeSpan.FromSeconds(15));
+        Assert.True(probe.ExitCode == 0, probe.StandardError);
     }
 
 #if LATTICEDBSHARP_NATIVE_TESTS
@@ -1243,6 +1352,58 @@ public sealed class NativeFeasibilityTests
         Assert.True(growth < 64L * 1024 * 1024, $"Managed memory grew by {growth} bytes over 100 lifecycles.");
     }
 
+#if LATTICEDBSHARP_NATIVE_TESTS
+    [Fact]
+#else
+    [Fact(Skip = "Enabled after the pinned LatticeDB native library is built and staged.")]
+#endif
+    public void Repeated_database_lifecycles_keep_process_memory_bounded()
+    {
+        var probe = RunWorkerToCompletion("memory", "unused", TimeSpan.FromSeconds(30));
+        Assert.True(probe.ExitCode == 0, probe.StandardError);
+        var samples = probe.StandardOutput.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(2, samples.Length);
+        var baseline = long.Parse(samples[0], System.Globalization.CultureInfo.InvariantCulture);
+        var final = long.Parse(samples[1], System.Globalization.CultureInfo.InvariantCulture);
+        var growth = final - baseline;
+        Assert.True(growth < 128L * 1024 * 1024,
+            $"Process working set grew by {growth} bytes over 100 native lifecycles.");
+    }
+
+    private static WorkerProbeResult RunWorkerToCompletion(string mode, string path, TimeSpan timeout)
+    {
+        var workerAssembly = typeof(WorkerMarker).Assembly.Location;
+        var dotnet = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? Environment.ProcessPath;
+        Assert.False(string.IsNullOrWhiteSpace(dotnet));
+        using var process = new Process
+        {
+            StartInfo = new ProcessStartInfo(dotnet!)
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                WorkingDirectory = AppContext.BaseDirectory,
+            },
+        };
+        process.StartInfo.ArgumentList.Add(workerAssembly);
+        process.StartInfo.ArgumentList.Add(mode);
+        process.StartInfo.ArgumentList.Add(path);
+        Assert.True(process.Start(), "Unable to start the native worker probe.");
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+        if (!process.WaitForExit(checked((int)timeout.TotalMilliseconds)))
+        {
+            process.Kill(entireProcessTree: true);
+            process.WaitForExit(15_000);
+            throw new TimeoutException($"Native worker probe '{mode}' exceeded {timeout}.");
+        }
+
+        return new WorkerProbeResult(
+            process.ExitCode,
+            output.GetAwaiter().GetResult(),
+            error.GetAwaiter().GetResult());
+    }
+
     private static WorkerProcess StartWorker(string mode, string path, string? access = null)
     {
         var workerAssembly = typeof(WorkerMarker).Assembly.Location;
@@ -1269,15 +1430,43 @@ public sealed class NativeFeasibilityTests
         }
 
         Assert.True(process.Start(), "Unable to start the native worker process.");
-        var ready = process.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(15)).GetAwaiter().GetResult();
+        string? ready;
+        try
+        {
+            ready = process.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(15)).GetAwaiter().GetResult();
+        }
+        catch
+        {
+            TerminateAndDispose(process);
+            throw;
+        }
         if (ready != "READY")
         {
-            var error = process.StandardError.ReadToEndAsync().WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();
-            process.Dispose();
+            string error;
+            try
+            {
+                error = process.StandardError.ReadToEndAsync().WaitAsync(TimeSpan.FromSeconds(2)).GetAwaiter().GetResult();
+            }
+            catch (TimeoutException)
+            {
+                error = "<worker did not close stderr>";
+            }
+            TerminateAndDispose(process);
             throw new InvalidOperationException($"Native worker did not become ready. Output='{ready}', error='{error}'.");
         }
 
         return new WorkerProcess(process);
+    }
+
+    private static void TerminateAndDispose(Process process)
+    {
+        if (!process.HasExited)
+        {
+            process.Kill(entireProcessTree: true);
+            process.WaitForExit(15_000);
+        }
+
+        process.Dispose();
     }
 
     private sealed class WorkerProcess : IDisposable
@@ -1320,6 +1509,8 @@ public sealed class NativeFeasibilityTests
             process.Dispose();
         }
     }
+
+    private sealed record WorkerProbeResult(int ExitCode, string StandardOutput, string StandardError);
 
     private sealed class TemporaryDirectory : IDisposable
     {

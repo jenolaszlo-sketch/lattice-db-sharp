@@ -25,6 +25,21 @@ internal static class NativeText
         }
     }
 
+    /// <summary>Validates text passed to a native NUL-terminated parameter.</summary>
+    internal static void ValidateNullTerminated(string? value, string parameterName)
+    {
+        if (value is null)
+        {
+            return;
+        }
+
+        Validate(value, parameterName);
+        if (value.Contains('\0', StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Value cannot contain a null character.", parameterName);
+        }
+    }
+
     internal static int GetByteCount(string value, string parameterName)
     {
         Validate(value, parameterName);

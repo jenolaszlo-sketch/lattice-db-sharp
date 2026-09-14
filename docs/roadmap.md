@@ -226,6 +226,34 @@ Measure retrieval relevance, latency, index cost, persistence/recovery,
 operational complexity, and migration cost. LatticeDB replaces or complements
 DuckDB only if the evidence is materially better.
 
+After Hongxian's disposable projection provider is proven, build an
+experimental Cangjie provider outside this repository. Cangjie is a stronger
+durability and mixed-query workload than Hongxian, so adoption should drive
+general wrapper improvements rather than Cangjie-specific APIs here.
+
+Provider-driven investigation targets:
+
+- efficient projection-scoped equality and lexical/vector queries without
+  unbounded over-fetch;
+- deterministic bounded multi-hop traversal and relationship-property filters;
+- index creation/existence/introspection and correct index maintenance across
+  insert, delete, rollback, reopen, and rebuild;
+- well-defined multi-writer behavior, WAL/locking combinations, busy outcomes,
+  cancellation boundaries, and crash recovery;
+- schema/version metadata, backup/restore, integrity verification, and
+  corruption diagnostics suitable for long-lived local stores;
+- transaction ergonomics for atomic node/relationship/revision writes;
+- stable score/distance semantics and composition primitives for lexical,
+  vector, graph, scope, and temporal filters without pretending unlike scores
+  are universal confidence;
+- multi-platform packed-consumer and long-running stress tests representative
+  of working-memory graphs.
+
+The acceptance bar is evidence from provider conformance and realistic
+workloads. `LatticeDbSharp` remains an idiomatic native binding; typed memory
+mapping, provenance, epistemic status, retention, and context compilation stay
+in Cangjie.
+
 ## Non-goals
 
 - ORM, object persistence, or LINQ-to-Cypher.
